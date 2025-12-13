@@ -284,8 +284,8 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
           const lastEntryPosition = Math.max(...latestSeasonEntries.map(e => getSeasonPosition(e.parsedDate)));
           
           // Set latest season data to null after the last entry
-          chartDataPoints.forEach((dp, index) => {
-            if (dp.position > lastEntryPosition && dp[latestSeason] !== null) {
+          chartDataPoints.forEach((dp) => {
+            if (dp.position > lastEntryPosition) {
               dp[latestSeason] = null;
             }
           });
