@@ -74,25 +74,29 @@ function App() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-50 transition-colors duration-300">
+        {/* Sticky Header */}
+        <header className="sticky top-0 z-50 w-full bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+          <div className="container mx-auto px-4 py-4 max-w-7xl">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-semibold">Jeremy Shapero</h1>
+              
+              {/* Theme Toggle Button */}
+              <button
+                onClick={toggleTheme}
+                className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+                aria-label="Toggle theme"
+              >
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5 text-yellow-500" />
+                ) : (
+                  <Moon className="w-5 h-5 text-gray-700" />
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+
         <div className="container mx-auto px-4 py-12 max-w-7xl">
-          {/* Header */}
-          <header className="mb-16 text-center relative">
-            <h1 className="mb-2">Hey, I'm Alex</h1>
-            <p className="text-gray-600 dark:text-gray-400">Developer, adventurer, music lover</p>
-            
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="absolute top-0 right-0 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-              aria-label="Toggle theme"
-            >
-              {isDarkMode ? (
-                <Sun className="w-5 h-5 text-yellow-500" />
-              ) : (
-                <Moon className="w-5 h-5 text-gray-700" />
-              )}
-            </button>
-          </header>
 
           {/* Main Layout */}
           <div className="grid lg:grid-cols-[1fr_400px] gap-8">
