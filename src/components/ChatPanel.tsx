@@ -5,7 +5,6 @@ import type { WidgetType } from '../App';
 
 interface ChatPanelProps {
   activeWidget: WidgetType;
-  headerHeight?: number;
 }
 
 interface Message {
@@ -18,6 +17,11 @@ interface Message {
 const widgetContexts = {
   about: {
     greeting: "Hi! I'm here to tell you more about me. What would you like to know?",
+    suggestedPrompts: [
+      "What are your areas of expertise as a PM?",
+      "Who's the GOAT 🏀",
+      "Fender or Gibson 🎸"
+    ],
     responses: [
       "I'm a full-stack developer with 5+ years of experience, specializing in React and Node.js.",
       "I'm based in Colorado, which gives me easy access to amazing outdoor activities!",
@@ -81,39 +85,10 @@ const widgetIcons = {
   photos: { icon: Camera, color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', border: 'border-amber-500' }
 };
 
-const suggestedPrompts = {
-  about: [
-    "Tell me about your background",
-    "What's your experience?"
-  ],
-  music: [
-    "What music do you listen to?",
-    "What are your favorite artists?"
-  ],
-  snowboarding: [
-    "Where do you snowboard most often?",
-    "What mountains did you visit last season?"
-  ],
-  biking: [
-    "What was your last bike ride?",
-    "How far do you typically ride?"
-  ],
-  books: [
-    "What are you currently reading?",
-    "What books have you read recently?"
-  ],
-  photos: [
-    "Tell me about your photography",
-    "Where have you traveled?"
-  ]
-};
-
-export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
+export function ChatPanel({ activeWidget }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
-  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 600);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -124,27 +99,15 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Track window height for responsive chat panel
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowHeight(window.innerHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   useEffect(() => {
     if (activeWidget && activeWidget !== null) {
       const context = widgetContexts[activeWidget];
-      // Reset messages when widget changes, but keep initial greeting contextual
       setMessages([{
         id: Date.now().toString(),
         text: context.greeting,
         sender: 'assistant',
         timestamp: new Date()
       }]);
-      setShowSuggestions(true); // Show suggestions when widget changes
     } else {
       setMessages([{
         id: 'initial',
@@ -152,19 +115,15 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
         sender: 'assistant',
         timestamp: new Date()
       }]);
-      setShowSuggestions(false);
     }
   }, [activeWidget]);
 
-  const sendMessageToAPI = async (messageText: string) => {
-    if (!messageText.trim() || !activeWidget) return;
-
-    // Hide suggestions when user sends a message
-    setShowSuggestions(false);
-
+  const handleSuggestedPrompt = (prompt: string) => {
+    if (!activeWidget) return;
+    
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: messageText,
+      text: prompt,
       sender: 'user',
       timestamp: new Date()
     };
@@ -172,117 +131,76 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    try {
-      // Get conversation history (last 10 messages for context, including the one we just added)
-      const recentMessages = [...messages, userMessage].slice(-10).map(msg => ({
-        role: msg.sender as 'user' | 'assistant',
-        content: msg.text,
-      }));
-
-      // Call the API endpoint
-      // When using 'vercel dev', the API is available at /api/chat
-      // When deployed, it's also at /api/chat
-      // If running just 'npm run dev', this will fail gracefully with a fallback message
-      const apiUrl = '/api/chat';
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: recentMessages,
-          activeWidget,
-          conversationHistory: messages.slice(-10).map(msg => ({
-            role: msg.sender as 'user' | 'assistant',
-            content: msg.text,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get response');
-      }
-
-      const data = await response.json();
-      
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message || 'Sorry, I encountered an error.',
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error: any) {
-      console.error('Chat error:', error);
-      
-      // Fallback to mock response if API fails
+    // Simulate AI response
+    setTimeout(() => {
       const context = widgetContexts[activeWidget];
       const randomResponse = context.responses[Math.floor(Math.random() * context.responses.length)];
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: error.message?.includes('ANTHROPIC_API_KEY') 
-          ? '⚠️ Claude API is not configured. Please set ANTHROPIC_API_KEY in your Vercel environment variables. Using fallback response: ' + randomResponse
-          : 'Sorry, I encountered an error. ' + (error.message || 'Please try again.'),
+        text: randomResponse,
         sender: 'assistant',
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } finally {
       setIsTyping(false);
-    }
-  };
-
-  const handleSuggestionClick = (prompt: string) => {
-    sendMessageToAPI(prompt);
+    }, 1000 + Math.random() * 1000);
   };
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !activeWidget) return;
-    
-    const userInput = input;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: input,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
-    await sendMessageToAPI(userInput);
+    setIsTyping(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const context = widgetContexts[activeWidget];
+      const randomResponse = context.responses[Math.floor(Math.random() * context.responses.length)];
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: randomResponse,
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      setIsTyping(false);
+    }, 1000 + Math.random() * 1000);
   };
 
-  // Calculate responsive height for large screens: viewport height - header - padding
-  const responsiveHeight = windowHeight - headerHeight - 40; // 40px for padding/gap
-
   return (
-    <div 
-      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]"
-      style={{ 
-        height: typeof window !== 'undefined' && window.innerWidth >= 1024 
-          ? `${Math.max(400, responsiveHeight)}px` // Minimum 400px height
-          : '600px' 
-      }}
-    >
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-gray-900 dark:text-gray-100">Chat</h3>
-          </div>
-          
-          {/* Active Widget Indicator - On same row */}
-          {activeWidget && widgetIcons[activeWidget] && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
-            >
-              {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
-              <span className="text-sm capitalize">Chatting about {activeWidget}</span>
-            </motion.div>
-          )}
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-gray-900 dark:text-gray-100">Chat</h3>
         </div>
+        
+        {/* Active Widget Indicator */}
+        {activeWidget && widgetIcons[activeWidget] && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
+          >
+            {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
+            <span className="text-sm capitalize">Chatting about {activeWidget}</span>
+          </motion.div>
+        )}
       </div>
 
       {/* Messages */}
@@ -341,28 +259,24 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
       </div>
 
       {/* Suggested Prompts */}
-      {activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] && (
-        <div className="px-4 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Try asking:</p>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {suggestedPrompts[activeWidget].map((prompt, index) => (
-              <motion.button
+      {activeWidget && widgetContexts[activeWidget] && 'suggestedPrompts' in widgetContexts[activeWidget] && messages.length <= 1 && (
+        <div className="px-4 pb-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="flex flex-wrap gap-2 pt-3">
+            {(widgetContexts[activeWidget] as any).suggestedPrompts?.map((prompt: string, index: number) => (
+              <button
                 key={index}
-                type="button"
-                onClick={() => handleSuggestionClick(prompt)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+                onClick={() => handleSuggestedPrompt(prompt)}
+                className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full transition-colors"
               >
                 {prompt}
-              </motion.button>
+              </button>
             ))}
           </div>
         </div>
       )}
 
       {/* Input */}
-      <form onSubmit={sendMessage} className={`px-4 pb-3 ${activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`} style={{ paddingBottom: '0.75rem' }}>
+      <form onSubmit={sendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         {!activeWidget ? (
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
             Select a widget to start chatting
@@ -372,19 +286,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
             <input
               type="text"
               value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                // Hide suggestions when user starts typing
-                if (showSuggestions && e.target.value.trim()) {
-                  setShowSuggestions(false);
-                }
-              }}
-              onFocus={() => {
-                // Show suggestions again if input is empty and we're on first message
-                if (!input.trim() && messages.length <= 1) {
-                  setShowSuggestions(true);
-                }
-              }}
+              onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
               className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100"
             />
