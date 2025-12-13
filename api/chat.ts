@@ -34,16 +34,54 @@ interface ChatRequest {
   }>;
 }
 
+// Parse CSV line handling quoted values
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim()); // Push last field
+  return result;
+}
+
 // Parse snowboarding CSV data
 function parseSnowboardingData() {
   const lines = snowboardingCsvContent.trim().split('\n');
-  const data: Record<string, { [season: string]: number }> = {};
+  const data: Record<string, { [key: string]: number | string }> = {};
   
   // Skip header
   for (let i = 1; i < lines.length; i++) {
-    const [date, season, days] = lines[i].split(',');
+    if (!lines[i].trim()) continue;
+    
+    const [date, location, season, daysStr] = parseCSVLine(lines[i]);
+    
+    // Normalize season format: "24-'25" -> "2024-25", "25-'26" -> "2025-26"
+    let normalizedSeason = season;
+    if (season.includes("'")) {
+      const match = season.match(/(\d+)-'(\d+)/);
+      if (match) {
+        const start = parseInt(match[1]);
+        const end = parseInt(match[2]);
+        normalizedSeason = `20${start}-${end}`;
+      }
+    }
+    
+    const days = parseInt(daysStr);
     if (!data[date]) data[date] = {};
-    data[date][season] = parseInt(days);
+    data[date][normalizedSeason] = days;
+    if (location) data[date]['location'] = location;
   }
   
   return data;
@@ -255,21 +293,38 @@ If a tool call fails or data isn't available, gracefully explain that the inform
               const { season, metric } = toolCall.input;
               let result = '';
               
+              // Get all seasons from data
+              const allSeasons = new Set<string>();
+              Object.values(snowboardingData).forEach(data => {
+                Object.keys(data).forEach(key => {
+                  if (key !== 'location') allSeasons.add(key);
+                });
+              });
+              
               if (metric === 'total_days') {
-                const seasons = season === 'all' ? ['2023-24', '2022-23'] : [season];
+                const seasons = season === 'all' ? Array.from(allSeasons) : [season];
                 seasons.forEach(s => {
                   const entries = Object.entries(snowboardingData).filter(([_, data]) => data[s]);
                   if (entries.length > 0) {
                     const lastEntry = entries[entries.length - 1];
-                    result += `${s}: ${lastEntry[1][s]} days\n`;
+                    const location = lastEntry[1].location || 'Unknown';
+                    result += `${s}: ${lastEntry[1][s]} days (Last location: ${location})\n`;
                   }
                 });
               } else if (metric === 'comparison') {
-                const data2022 = Object.entries(snowboardingData).filter(([_, d]) => d['2022-23']);
-                const data2023 = Object.entries(snowboardingData).filter(([_, d]) => d['2023-24']);
-                const last2022 = data2022[data2022.length - 1]?.[1]['2022-23'] || 0;
-                const last2023 = data2023[data2023.length - 1]?.[1]['2023-24'] || 0;
-                result = `2022-23 season: ${last2022} days\n2023-24 season: ${last2023} days`;
+                // Get latest season and previous season
+                const sortedSeasons = Array.from(allSeasons).sort().reverse();
+                if (sortedSeasons.length >= 2) {
+                  const currentSeason = sortedSeasons[0];
+                  const previousSeason = sortedSeasons[1];
+                  const currentData = Object.entries(snowboardingData).filter(([_, d]) => d[currentSeason]);
+                  const previousData = Object.entries(snowboardingData).filter(([_, d]) => d[previousSeason]);
+                  const currentDays = currentData[currentData.length - 1]?.[1][currentSeason] || 0;
+                  const previousDays = previousData[previousData.length - 1]?.[1][previousSeason] || 0;
+                  result = `${currentSeason} season: ${currentDays} days\n${previousSeason} season: ${previousDays} days`;
+                } else {
+                  result = JSON.stringify(snowboardingData);
+                }
               }
               
               toolResult = {
