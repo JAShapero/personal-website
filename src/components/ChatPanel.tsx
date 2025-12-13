@@ -91,7 +91,7 @@ const suggestedPrompts = {
   ],
   snowboarding: [
     "Where do you snowboard most often?",
-    "What mountains have you visited?"
+    "What mountains did you visit last season?"
   ],
   biking: [
     "What was your last bike ride?",
