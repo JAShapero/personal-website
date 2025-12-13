@@ -5,6 +5,7 @@ import type { WidgetType } from '../App';
 
 interface ChatPanelProps {
   activeWidget: WidgetType;
+  headerHeight?: number;
 }
 
 interface Message {
@@ -107,11 +108,12 @@ const suggestedPrompts = {
   ]
 };
 
-export function ChatPanel({ activeWidget }: ChatPanelProps) {
+export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 600);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -121,6 +123,16 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Track window height for responsive chat panel
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowHeight(window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (activeWidget && activeWidget !== null) {
@@ -238,27 +250,39 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
     await sendMessageToAPI(userInput);
   };
 
+  // Calculate responsive height for large screens: viewport height - header - padding
+  const responsiveHeight = windowHeight - headerHeight - 40; // 40px for padding/gap
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
+    <div 
+      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]"
+      style={{ 
+        height: typeof window !== 'undefined' && window.innerWidth >= 1024 
+          ? `${Math.max(400, responsiveHeight)}px` // Minimum 400px height
+          : '600px' 
+      }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-gray-900 dark:text-gray-100">Chat</h3>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-gray-900 dark:text-gray-100">Chat</h3>
+          </div>
+          
+          {/* Active Widget Indicator - On same row */}
+          {activeWidget && widgetIcons[activeWidget] && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
+            >
+              {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
+              <span className="text-sm capitalize">Chatting about {activeWidget}</span>
+            </motion.div>
+          )}
         </div>
-        
-        {/* Active Widget Indicator */}
-        {activeWidget && widgetIcons[activeWidget] && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
-          >
-            {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
-            <span className="text-sm capitalize">Chatting about {activeWidget}</span>
-          </motion.div>
-        )}
       </div>
 
       {/* Messages */}
@@ -338,7 +362,7 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
       )}
 
       {/* Input */}
-      <form onSubmit={sendMessage} className={`px-4 pb-4 ${activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`}>
+      <form onSubmit={sendMessage} className={`px-4 pb-3 ${activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`} style={{ paddingBottom: '0.75rem' }}>
         {!activeWidget ? (
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
             Select a widget to start chatting

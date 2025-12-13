@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Moon, Sun } from 'lucide-react';
@@ -22,6 +22,8 @@ interface Widget {
 function App() {
   const [activeWidget, setActiveWidget] = useState<WidgetType>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const headerRef = useRef<HTMLElement>(null);
   const [widgets, setWidgets] = useState<Widget[]>([
     { id: 'about', component: AboutWidget },
     { id: 'music', component: MusicWidget },
@@ -54,6 +56,19 @@ function App() {
     }
   }, [isDarkMode]);
 
+  // Measure header height and update spacer
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, []);
+
   const handleWidgetClick = (widget: WidgetType) => {
     setActiveWidget(widget);
   };
@@ -75,10 +90,10 @@ function App() {
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-50 transition-colors duration-300">
         {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 w-full bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 w-full bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="container mx-auto px-4 py-4 max-w-7xl">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold">Jeremy Shapero</h1>
+              <h1 className="text-2xl font-semibold">Jeremy Shapero</h1>
               
               {/* Theme Toggle Button */}
               <button
@@ -96,7 +111,10 @@ function App() {
           </div>
         </header>
 
-        <div className="container mx-auto px-4 pt-24 pb-12 max-w-7xl">
+        {/* Spacer to prevent content overlap with fixed header */}
+        <div style={{ height: `${headerHeight}px` }}></div>
+
+        <div className="container mx-auto px-4 py-12 max-w-7xl">
 
           {/* Main Layout */}
           <div className="grid lg:grid-cols-[1fr_400px] gap-8">
@@ -122,8 +140,8 @@ function App() {
             </div>
 
             {/* Chat Panel */}
-            <div className="lg:sticky lg:top-8 lg:self-start">
-              <ChatPanel activeWidget={activeWidget} />
+            <div className="lg:sticky lg:self-start" style={{ top: `${headerHeight + 8}px` }}>
+              <ChatPanel activeWidget={activeWidget} headerHeight={headerHeight} />
             </div>
           </div>
         </div>
