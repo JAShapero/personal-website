@@ -25,14 +25,11 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
         </div>
         <h3 className="text-gray-900 dark:text-gray-100">About Me</h3>
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-        Full-stack developer based in Colorado. I love building beautiful, functional web experiences 
-        and spending my free time exploring the mountains.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs">React</span>
-        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs">TypeScript</span>
-        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs">Node.js</span>
+      <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2">
+        <p>Hey, I'm Jeremy 👋</p>
+        <p>I'm a PM based in Boulder, Colorado.</p>
+        <p>I love building data and AI products, and I love tackling the ambiguity of 0 to 1 opportunities.</p>
+        <p>I'm a twin dad and am passionate about the outdoors and music.</p>
       </div>
     </motion.div>
   );
