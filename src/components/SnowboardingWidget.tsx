@@ -70,15 +70,33 @@ function normalizeSeason(season: string): string {
   return season;
 }
 
-// Format date for chart display - include year if it helps distinguish
-function formatDateForChart(date: Date, includeYear: boolean = false): string {
+// Format date for chart display - normalize to Nov-May season format
+function formatDateForChart(date: Date): string {
   const month = date.toLocaleDateString('en-US', { month: 'short' });
   const day = date.getDate();
-  if (includeYear) {
-    const year = date.getFullYear();
-    return `${month} ${day} '${year.toString().slice(-2)}`;
-  }
   return `${month} ${day}`;
+}
+
+// Create a normalized date key that maps dates to their position in Nov-May timeline
+// This ensures both seasons plot on the same Nov-May axis
+function getSeasonPosition(date: Date): number {
+  const month = date.getMonth(); // 0-11
+  const day = date.getDate();
+  
+  // Map months to position in season:
+  // Nov (10) = 0, Dec (11) = 1, Jan (0) = 2, Feb (1) = 3, Mar (2) = 4, Apr (3) = 5, May (4) = 6
+  let seasonMonth = -1;
+  if (month === 10) seasonMonth = 0; // November
+  else if (month === 11) seasonMonth = 1; // December
+  else if (month === 0) seasonMonth = 2; // January
+  else if (month === 1) seasonMonth = 3; // February
+  else if (month === 2) seasonMonth = 4; // March
+  else if (month === 3) seasonMonth = 5; // April
+  else if (month === 4) seasonMonth = 6; // May
+  
+  // Return a number that can be used for sorting: seasonMonth * 1000 + day
+  // This ensures proper chronological order within the season
+  return seasonMonth * 1000 + day;
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -161,34 +179,38 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         const latestSeasonEntries = entries.filter(e => e.season === latestSeason);
         const previousSeasonEntries = previousSeason ? entries.filter(e => e.season === previousSeason) : [];
         
-        // Get all unique dates from all seasons, sorted chronologically
-        const allEntryDates = new Set<number>();
-        entries.forEach(e => allEntryDates.add(e.parsedDate.getTime()));
-        const sortedTimes = Array.from(allEntryDates).sort((a, b) => a - b);
+        // Normalize dates to Nov-May timeline position so both seasons plot on same axis
+        // Group dates by their position in the season (Nov=0, Dec=1, Jan=2, etc.)
+        const dateGroups = new Map<number, Date>();
         
-        // Create data points for each date in chronological order
-        // We need to format dates carefully to avoid confusion when seasons overlap
-        sortedTimes.forEach((time, index) => {
-          const date = new Date(time);
-          // Format with month and day
-          let dateStr = formatDateForChart(date, false);
-          
-          // If there are dates that could be confused (same month/day from different years),
-          // we might want to add year hints, but for now keep it simple
+        entries.forEach(e => {
+          const position = getSeasonPosition(e.parsedDate);
+          // Keep the earliest date for each position (for display label)
+          if (!dateGroups.has(position) || dateGroups.get(position)!.getTime() > e.parsedDate.getTime()) {
+            dateGroups.set(position, e.parsedDate);
+          }
+        });
+        
+        // Sort by season position (Nov -> May)
+        const sortedPositions = Array.from(dateGroups.entries()).sort((a, b) => a[0] - b[0]);
+        
+        // Create data points for each position in Nov-May order
+        sortedPositions.forEach(([position, date]) => {
+          const dateStr = formatDateForChart(date);
           const dataPoint: any = { 
             date: dateStr,
-            dateTime: time, // Store full timestamp for sorting
-            index: index // Store index to ensure order
+            position: position // For sorting
           };
           
-          // Find latest entry up to this date for each season
+          // Find latest entry up to this position for each season
+          // Compare by season position, not actual timestamp
           const latestUpToDate = latestSeasonEntries
-            .filter(e => e.parsedDate.getTime() <= time)
-            .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime())[0];
+            .filter(e => getSeasonPosition(e.parsedDate) <= position)
+            .sort((a, b) => getSeasonPosition(b.parsedDate) - getSeasonPosition(a.parsedDate))[0];
           
           const previousUpToDate = previousSeason ? previousSeasonEntries
-            .filter(e => e.parsedDate.getTime() <= time)
-            .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime())[0] : null;
+            .filter(e => getSeasonPosition(e.parsedDate) <= position)
+            .sort((a, b) => getSeasonPosition(b.parsedDate) - getSeasonPosition(a.parsedDate))[0] : null;
           
           dataPoint[latestSeason] = latestUpToDate?.days || null;
           if (previousSeason && previousUpToDate) {
@@ -201,13 +223,12 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
           }
         });
         
-        // Ensure data points are sorted by dateTime (should already be, but just to be safe)
-        chartDataPoints.sort((a, b) => a.dateTime - b.dateTime);
+        // Ensure data points are sorted by season position (Nov -> May)
+        chartDataPoints.sort((a, b) => a.position - b.position);
         
-        // Remove dateTime from data points before passing to chart (it's just for sorting)
+        // Remove position from data points before passing to chart
         chartDataPoints.forEach(dp => {
-          delete dp.dateTime;
-          delete dp.index;
+          delete dp.position;
         });
         
         setChartData(chartDataPoints);
