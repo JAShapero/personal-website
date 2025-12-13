@@ -167,14 +167,18 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         const sortedTimes = Array.from(allEntryDates).sort((a, b) => a - b);
         
         // Create data points for each date in chronological order
-        sortedTimes.forEach(time => {
+        // We need to format dates carefully to avoid confusion when seasons overlap
+        sortedTimes.forEach((time, index) => {
           const date = new Date(time);
-          // Use month and day, but ensure we can distinguish seasons
-          // For seasons that overlap (e.g., Dec 2024 vs Dec 2025), we need to be careful
-          const dateStr = formatDateForChart(date, false);
+          // Format with month and day
+          let dateStr = formatDateForChart(date, false);
+          
+          // If there are dates that could be confused (same month/day from different years),
+          // we might want to add year hints, but for now keep it simple
           const dataPoint: any = { 
             date: dateStr,
-            dateTime: time // Store full timestamp for sorting
+            dateTime: time, // Store full timestamp for sorting
+            index: index // Store index to ensure order
           };
           
           // Find latest entry up to this date for each season
@@ -199,6 +203,12 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         
         // Ensure data points are sorted by dateTime (should already be, but just to be safe)
         chartDataPoints.sort((a, b) => a.dateTime - b.dateTime);
+        
+        // Remove dateTime from data points before passing to chart (it's just for sorting)
+        chartDataPoints.forEach(dp => {
+          delete dp.dateTime;
+          delete dp.index;
+        });
         
         setChartData(chartDataPoints);
         setLoading(false);
