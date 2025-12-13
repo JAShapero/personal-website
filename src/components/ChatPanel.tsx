@@ -84,44 +84,32 @@ const suggestedPrompts = {
   about: [
     "Tell me about your background",
     "What's your experience?",
-    "What are your skills?",
-    "Where are you based?",
-    "What are your interests?"
+    "What are your skills?"
   ],
   music: [
     "What music do you listen to?",
     "What are your favorite artists?",
-    "What's your most played song?",
-    "What genres do you like?",
-    "What's your current music taste?"
+    "What's your most played song?"
   ],
   snowboarding: [
     "Where do you snowboard most often?",
-    "When was the last time you went snowboarding?",
-    "How many days have you snowboarded this season?",
-    "What's your favorite resort?",
-    "Compare this season to last season"
+    "What mountains have you visited?",
+    "How's your season pacing vs. last year?"
   ],
   biking: [
     "What was your last bike ride?",
     "How far do you typically ride?",
-    "What's your longest ride?",
-    "Where do you like to bike?",
-    "How much elevation do you climb?"
+    "What's your longest ride?"
   ],
   books: [
     "What are you currently reading?",
     "What books have you read recently?",
-    "What's your favorite book?",
-    "What genres do you read?",
-    "How many books do you read per year?"
+    "What's your favorite book?"
   ],
   photos: [
     "Tell me about your photography",
     "Where have you traveled?",
-    "What's your favorite photo?",
-    "What camera do you use?",
-    "What's your photography style?"
+    "What's your favorite photo?"
   ]
 };
 
