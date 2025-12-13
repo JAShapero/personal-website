@@ -179,72 +179,76 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         const latestSeasonEntries = entries.filter(e => e.season === latestSeason);
         const previousSeasonEntries = previousSeason ? entries.filter(e => e.season === previousSeason) : [];
         
-        // Generate all dates from earliest to latest entry, filling in gaps
-        // This will show flat periods when no snowboarding occurred
-        const allDates = new Set<number>();
+        // Generate all dates from earliest to latest entry for each season
+        // Then normalize to Nov-May timeline so both seasons plot together
+        const allDatesByPosition = new Map<number, Date>();
         
-        // Find date range for each season
-        const latestSeasonStart = latestSeasonEntries.length > 0 
-          ? Math.min(...latestSeasonEntries.map(e => e.parsedDate.getTime()))
-          : null;
-        const latestSeasonEnd = latestSeasonEntries.length > 0
-          ? Math.max(...latestSeasonEntries.map(e => e.parsedDate.getTime()))
-          : null;
-        
-        const previousSeasonStart = previousSeason && previousSeasonEntries.length > 0
-          ? Math.min(...previousSeasonEntries.map(e => e.parsedDate.getTime()))
-          : null;
-        const previousSeasonEnd = previousSeason && previousSeasonEntries.length > 0
-          ? Math.max(...previousSeasonEntries.map(e => e.parsedDate.getTime()))
-          : null;
-        
-        // Generate all dates from Nov of earliest season to May of latest season
-        // But we need to do this per season to maintain Nov-May timeline
-        const seasonDateRanges = new Map<string, { start: number; end: number }>();
-        
-        if (latestSeasonStart && latestSeasonEnd) {
-          seasonDateRanges.set(latestSeason, { start: latestSeasonStart, end: latestSeasonEnd });
-        }
-        if (previousSeason && previousSeasonStart && previousSeasonEnd) {
-          seasonDateRanges.set(previousSeason, { start: previousSeasonStart, end: previousSeasonEnd });
-        }
-        
-        // For each season, generate all dates from first entry to last entry
-        seasonDateRanges.forEach((range, season) => {
-          let currentDate = new Date(range.start);
-          const endDate = new Date(range.end);
-          
-          while (currentDate.getTime() <= endDate.getTime()) {
-            allDates.add(currentDate.getTime());
-            currentDate = new Date(currentDate);
-            currentDate.setDate(currentDate.getDate() + 1); // Next day
+        // Helper function to generate all dates between two dates
+        const generateDateRange = (start: Date, end: Date) => {
+          const dates: Date[] = [];
+          let current = new Date(start);
+          while (current.getTime() <= end.getTime()) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
           }
-        });
+          return dates;
+        };
         
-        // Convert to array and sort by season position (Nov -> May), not absolute date
-        const sortedDates = Array.from(allDates).sort((a, b) => {
-          const posA = getSeasonPosition(new Date(a));
-          const posB = getSeasonPosition(new Date(b));
-          return posA - posB;
-        });
+        // Generate dates for latest season
+        if (latestSeasonEntries.length > 0) {
+          const latestStart = latestSeasonEntries.reduce((earliest, e) => 
+            e.parsedDate.getTime() < earliest.getTime() ? e.parsedDate : earliest
+          , latestSeasonEntries[0].parsedDate);
+          const latestEnd = latestSeasonEntries.reduce((latest, e) => 
+            e.parsedDate.getTime() > latest.getTime() ? e.parsedDate : latest
+          , latestSeasonEntries[0].parsedDate);
+          
+          const latestDates = generateDateRange(latestStart, latestEnd);
+          latestDates.forEach(date => {
+            const position = getSeasonPosition(date);
+            // Keep the earliest date for each position (for display label)
+            if (!allDatesByPosition.has(position) || 
+                allDatesByPosition.get(position)!.getTime() > date.getTime()) {
+              allDatesByPosition.set(position, date);
+            }
+          });
+        }
         
-        // Create data points for each date
-        sortedDates.forEach((time) => {
-          const date = new Date(time);
+        // Generate dates for previous season
+        if (previousSeason && previousSeasonEntries.length > 0) {
+          const previousStart = previousSeasonEntries.reduce((earliest, e) => 
+            e.parsedDate.getTime() < earliest.getTime() ? e.parsedDate : earliest
+          , previousSeasonEntries[0].parsedDate);
+          const previousEnd = previousSeasonEntries.reduce((latest, e) => 
+            e.parsedDate.getTime() > latest.getTime() ? e.parsedDate : latest
+          , previousSeasonEntries[0].parsedDate);
+          
+          const previousDates = generateDateRange(previousStart, previousEnd);
+          previousDates.forEach(date => {
+            const position = getSeasonPosition(date);
+            // Keep the earliest date for each position (for display label)
+            if (!allDatesByPosition.has(position) || 
+                allDatesByPosition.get(position)!.getTime() > date.getTime()) {
+              allDatesByPosition.set(position, date);
+            }
+          });
+        }
+        
+        // Convert to sorted array by position (Nov -> May)
+        const sortedPositions = Array.from(allDatesByPosition.entries())
+          .sort((a, b) => a[0] - b[0]);
+        
+        // Create data points for each position
+        sortedPositions.forEach(([position, date]) => {
           const dateStr = formatDateForChart(date);
-          const position = getSeasonPosition(date);
           const dataPoint: any = { 
             date: dateStr,
             position: position
           };
           
-          // Find latest entry up to this date for each season
-          // For each season, find the most recent entry on or before this date
+          // Find latest entry up to this position for each season
           const latestUpToDate = latestSeasonEntries
-            .filter(e => {
-              const entryPos = getSeasonPosition(e.parsedDate);
-              return entryPos <= position;
-            })
+            .filter(e => getSeasonPosition(e.parsedDate) <= position)
             .sort((a, b) => {
               const posA = getSeasonPosition(a.parsedDate);
               const posB = getSeasonPosition(b.parsedDate);
@@ -252,27 +256,21 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
             })[0];
           
           const previousUpToDate = previousSeason ? previousSeasonEntries
-            .filter(e => {
-              const entryPos = getSeasonPosition(e.parsedDate);
-              return entryPos <= position;
-            })
+            .filter(e => getSeasonPosition(e.parsedDate) <= position)
             .sort((a, b) => {
               const posA = getSeasonPosition(a.parsedDate);
               const posB = getSeasonPosition(b.parsedDate);
               return posB - posA;
             })[0] : null;
           
-          // Only add data point if we have entries for this season
-          // This ensures we only show dates that are within the season's range
-          const hasLatestData = latestUpToDate && latestSeasonStart && time >= latestSeasonStart && time <= latestSeasonEnd!;
-          const hasPreviousData = previousUpToDate && previousSeason && previousSeasonStart && time >= previousSeasonStart && time <= previousSeasonEnd!;
+          // Add data for each season that has entries
+          dataPoint[latestSeason] = latestUpToDate?.days || null;
+          if (previousSeason && previousUpToDate) {
+            dataPoint[previousSeason] = previousUpToDate.days;
+          }
           
-          if (hasLatestData || hasPreviousData) {
-            dataPoint[latestSeason] = hasLatestData ? latestUpToDate.days : null;
-            if (previousSeason && hasPreviousData) {
-              dataPoint[previousSeason] = previousUpToDate.days;
-            }
-            
+          // Only add if we have data for at least one season
+          if (latestUpToDate || previousUpToDate) {
             chartDataPoints.push(dataPoint);
           }
         });
