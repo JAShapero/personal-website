@@ -144,38 +144,25 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
     }
   }, [activeWidget]);
 
-  const handleSuggestionClick = (prompt: string) => {
-    setInput(prompt);
-    setShowSuggestions(false);
-    // Focus the input after setting the suggestion
-    setTimeout(() => {
-      const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement;
-      inputElement?.focus();
-    }, 0);
-  };
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || !activeWidget) return;
+  const sendMessageToAPI = async (messageText: string) => {
+    if (!messageText.trim() || !activeWidget) return;
 
     // Hide suggestions when user sends a message
     setShowSuggestions(false);
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: input,
+      text: messageText,
       sender: 'user',
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const userInput = input;
-    setInput('');
     setIsTyping(true);
 
     try {
-      // Get conversation history (last 10 messages for context)
-      const recentMessages = messages.slice(-10).map(msg => ({
+      // Get conversation history (last 10 messages for context, including the one we just added)
+      const recentMessages = [...messages, userMessage].slice(-10).map(msg => ({
         role: msg.sender as 'user' | 'assistant',
         content: msg.text,
       }));
@@ -192,15 +179,12 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [
-            ...recentMessages,
-            {
-              role: 'user',
-              content: userInput,
-            },
-          ],
+          messages: recentMessages,
           activeWidget,
-          conversationHistory: recentMessages,
+          conversationHistory: messages.slice(-10).map(msg => ({
+            role: msg.sender as 'user' | 'assistant',
+            content: msg.text,
+          })),
         }),
       });
 
@@ -239,6 +223,19 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleSuggestionClick = (prompt: string) => {
+    sendMessageToAPI(prompt);
+  };
+
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || !activeWidget) return;
+    
+    const userInput = input;
+    setInput('');
+    await sendMessageToAPI(userInput);
   };
 
   return (
