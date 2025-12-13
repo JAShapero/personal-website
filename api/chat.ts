@@ -56,10 +56,11 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// Parse snowboarding CSV data
+// Parse snowboarding CSV data - returns both structured data and entries list
 function parseSnowboardingData() {
   const lines = snowboardingCsvContent.trim().split('\n');
   const data: Record<string, { [key: string]: number | string }> = {};
+  const entries: Array<{ date: string; location: string; season: string; days: number }> = [];
   
   // Skip header
   for (let i = 1; i < lines.length; i++) {
@@ -82,9 +83,17 @@ function parseSnowboardingData() {
     if (!data[date]) data[date] = {};
     data[date][normalizedSeason] = days;
     if (location) data[date]['location'] = location;
+    
+    // Also store as entry for easier querying
+    entries.push({
+      date,
+      location,
+      season: normalizedSeason,
+      days
+    });
   }
   
-  return data;
+  return { data, entries };
 }
 
 // Get widget-specific context prompt
@@ -139,17 +148,17 @@ const tools = [
   },
   {
     name: 'get_snowboarding_data',
-    description: 'Get Jeremy\'s snowboarding statistics including days snowboarded, season progress, and historical data.',
+    description: 'Get Jeremy\'s snowboarding statistics including days snowboarded, season progress, locations, dates, and historical data. Can answer questions about where he snowboards most, last time/location, total days, season comparisons, etc.',
     input_schema: {
       type: 'object' as const,
       properties: {
         season: {
           type: 'string' as const,
-          description: 'Which season to query (e.g., "2023-24", "2022-23", or "all")',
+          description: 'Which season to query (e.g., "2024-25", "2025-26", or "all"). Optional - if not provided, will use latest season.',
         },
         metric: {
           type: 'string' as const,
-          description: 'What metric to get (e.g., "total_days", "progress", "comparison")',
+          description: 'What information to get: "total_days", "progress", "comparison", "locations", "most_common_location", "last_location", "last_date", or "all"',
         },
       },
       required: ['metric'],
@@ -263,6 +272,13 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     let finalContent = '';
     let toolResults: any[] = [];
 
+    if (!response.content || response.content.length === 0) {
+      return res.status(500).json({
+        error: 'Empty response from Claude API',
+        message: 'The AI response was empty. Please try again.',
+      });
+    }
+
     if (response.content[0].type === 'text') {
       finalContent = response.content[0].text;
     } else if (response.content[0].type === 'tool_use') {
@@ -289,7 +305,7 @@ If a tool call fails or data isn't available, gracefully explain that the inform
               break;
               
             case 'get_snowboarding_data':
-              const snowboardingData = parseSnowboardingData();
+              const { data: snowboardingData, entries: allEntries } = parseSnowboardingData();
               const { season, metric } = toolCall.input;
               let result = '';
               
@@ -301,8 +317,14 @@ If a tool call fails or data isn't available, gracefully explain that the inform
                 });
               });
               
-              if (metric === 'total_days') {
-                const seasons = season === 'all' ? Array.from(allSeasons) : [season];
+              // Determine which season to query (default to latest if not specified)
+              const targetSeason = season || Array.from(allSeasons).sort().reverse()[0];
+              const seasonEntries = targetSeason === 'all' 
+                ? allEntries 
+                : allEntries.filter(e => e.season === targetSeason);
+              
+              if (metric === 'total_days' || metric === 'progress') {
+                const seasons = season === 'all' ? Array.from(allSeasons) : [targetSeason];
                 seasons.forEach(s => {
                   const entries = Object.entries(snowboardingData).filter(([_, data]) => data[s]);
                   if (entries.length > 0) {
@@ -325,11 +347,54 @@ If a tool call fails or data isn't available, gracefully explain that the inform
                 } else {
                   result = JSON.stringify(snowboardingData);
                 }
+              } else if (metric === 'locations' || metric === 'all') {
+                // Return all entries with locations for the season
+                result = `Snowboarding entries for ${targetSeason}:\n`;
+                seasonEntries.forEach(e => {
+                  result += `${e.date}: ${e.location} (${e.days} days)\n`;
+                });
+              } else if (metric === 'most_common_location') {
+                // Count locations for the season
+                const locationCount: Record<string, number> = {};
+                seasonEntries.forEach(e => {
+                  locationCount[e.location] = (locationCount[e.location] || 0) + 1;
+                });
+                const sortedLocations = Object.entries(locationCount).sort((a, b) => b[1] - a[1]);
+                if (sortedLocations.length > 0) {
+                  const [mostCommon, count] = sortedLocations[0];
+                  result = `Most common location: ${mostCommon} (${count} ${count === 1 ? 'time' : 'times'})\n`;
+                  if (sortedLocations.length > 1) {
+                    result += `\nAll locations:\n`;
+                    sortedLocations.forEach(([loc, cnt]) => {
+                      result += `- ${loc}: ${cnt} ${cnt === 1 ? 'time' : 'times'}\n`;
+                    });
+                  }
+                } else {
+                  result = 'No location data available.';
+                }
+              } else if (metric === 'last_location' || metric === 'last_date') {
+                // Get most recent entry
+                if (seasonEntries.length > 0) {
+                  const lastEntry = seasonEntries[seasonEntries.length - 1];
+                  if (metric === 'last_location') {
+                    result = `Last location: ${lastEntry.location} (on ${lastEntry.date})\n`;
+                  } else {
+                    result = `Last time snowboarding: ${lastEntry.date} at ${lastEntry.location} (Day ${lastEntry.days} of the season)\n`;
+                  }
+                } else {
+                  result = 'No snowboarding data available for this season.';
+                }
+              } else {
+                // Default: return all data
+                result = `Snowboarding data:\n`;
+                seasonEntries.forEach(e => {
+                  result += `${e.date}: ${e.location} (${e.season}, Day ${e.days})\n`;
+                });
               }
               
               toolResult = {
                 tool_use_id: toolCall.id,
-                content: result || JSON.stringify(snowboardingData),
+                content: result || 'No snowboarding data available.',
               };
               break;
               
@@ -399,7 +464,9 @@ If a tool call fails or data isn't available, gracefully explain that the inform
         ] as any,
       });
 
-      if (followUpResponse.content[0].type === 'text') {
+      if (!followUpResponse.content || followUpResponse.content.length === 0) {
+        finalContent = 'I encountered an issue processing your request. Please try again.';
+      } else if (followUpResponse.content[0].type === 'text') {
         finalContent = followUpResponse.content[0].text;
       } else {
         finalContent = 'I encountered an issue processing your request.';
