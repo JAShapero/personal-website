@@ -1,0 +1,306 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Send, Sparkles, Music, User, Mountain, Bike, Camera, BookOpen } from 'lucide-react';
+import type { WidgetType } from '../App';
+
+interface ChatPanelProps {
+  activeWidget: WidgetType;
+}
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'assistant';
+  timestamp: Date;
+}
+
+const widgetContexts = {
+  about: {
+    greeting: "Hi! I'm here to tell you more about me. What would you like to know?",
+    responses: [
+      "I'm a full-stack developer with 5+ years of experience, specializing in React and Node.js.",
+      "I'm based in Colorado, which gives me easy access to amazing outdoor activities!",
+      "I love the intersection of technology and design - building things that work well and look great.",
+      "When I'm not coding, you'll find me on the slopes or bike trails!"
+    ]
+  },
+  music: {
+    greeting: "Let's talk music! I'm really into electronic and ambient stuff.",
+    responses: [
+      "M83's 'Midnight City' is my go-to coding soundtrack - perfect energy!",
+      "I've been listening to a lot of progressive house and ambient electronic lately.",
+      "Deadmau5's 'Strobe' is a masterpiece - that 10-minute build is incredible.",
+      "Music really helps me focus when I'm deep in code. What kind of music do you like?"
+    ]
+  },
+  snowboarding: {
+    greeting: "Snowboarding is my winter passion! Let me tell you about it.",
+    responses: [
+      "I usually ride at Breckenridge and Keystone - they have amazing terrain parks!",
+      "My last session was in February 2024. Can't wait for the next snow season!",
+      "I've been snowboarding for about 8 years now. Started on the bunny slopes!",
+      "There's nothing like carving down fresh powder on a bluebird day."
+    ]
+  },
+  biking: {
+    greeting: "Biking keeps me active year-round! What would you like to know?",
+    responses: [
+      "I ride both mountain and road bikes - they each have their own appeal.",
+      "My favorite trail is the Highline Canal Trail - great for long rides.",
+      "I went out just a couple weeks ago! The weather has been perfect for riding.",
+      "I'm training for a century ride next summer - 100 miles!"
+    ]
+  },
+  photos: {
+    greeting: "Photography is how I capture my adventures! Let's chat about it.",
+    responses: [
+      "I shoot mostly landscape and outdoor photography - nature is my favorite subject.",
+      "I use a Canon mirrorless camera, but honestly, some of my best shots are on my phone!",
+      "Golden hour is magical - that warm light makes everything look amazing.",
+      "I love finding unique perspectives in familiar places."
+    ]
+  },
+  books: {
+    greeting: "I love reading! Currently working through some great books.",
+    responses: [
+      "The Pragmatic Programmer is a classic - every developer should read it at least once.",
+      "I'm also reading Atomic Habits by James Clear. The small changes really do add up!",
+      "I try to balance technical books with personal development and fiction.",
+      "I usually read for 30 minutes before bed - it's a great way to wind down."
+    ]
+  }
+};
+
+const widgetIcons = {
+  about: { icon: User, color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400', border: 'border-blue-500' },
+  music: { icon: Music, color: 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400', border: 'border-purple-500' },
+  snowboarding: { icon: Mountain, color: 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400', border: 'border-cyan-500' },
+  biking: { icon: Bike, color: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400', border: 'border-green-500' },
+  books: { icon: BookOpen, color: 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400', border: 'border-orange-500' },
+  photos: { icon: Camera, color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', border: 'border-amber-500' }
+};
+
+export function ChatPanel({ activeWidget }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (activeWidget && activeWidget !== null) {
+      const context = widgetContexts[activeWidget];
+      // Reset messages when widget changes, but keep initial greeting contextual
+      setMessages([{
+        id: Date.now().toString(),
+        text: context.greeting,
+        sender: 'assistant',
+        timestamp: new Date()
+      }]);
+    } else {
+      setMessages([{
+        id: 'initial',
+        text: "👋 Hey! Click on any widget to start chatting about it!",
+        sender: 'assistant',
+        timestamp: new Date()
+      }]);
+    }
+  }, [activeWidget]);
+
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || !activeWidget) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: input,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    const userInput = input;
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      // Get conversation history (last 10 messages for context)
+      const recentMessages = messages.slice(-10).map(msg => ({
+        role: msg.sender as 'user' | 'assistant',
+        content: msg.text,
+      }));
+
+      // Call the API endpoint
+      // When using 'vercel dev', the API is available at /api/chat
+      // When deployed, it's also at /api/chat
+      // If running just 'npm run dev', this will fail gracefully with a fallback message
+      const apiUrl = '/api/chat';
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            ...recentMessages,
+            {
+              role: 'user',
+              content: userInput,
+            },
+          ],
+          activeWidget,
+          conversationHistory: recentMessages,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to get response');
+      }
+
+      const data = await response.json();
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.message || 'Sorry, I encountered an error.',
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      
+      // Fallback to mock response if API fails
+      const context = widgetContexts[activeWidget];
+      const randomResponse = context.responses[Math.floor(Math.random() * context.responses.length)];
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: error.message?.includes('ANTHROPIC_API_KEY') 
+          ? '⚠️ Claude API is not configured. Please set ANTHROPIC_API_KEY in your Vercel environment variables. Using fallback response: ' + randomResponse
+          : 'Sorry, I encountered an error. ' + (error.message || 'Please try again.'),
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-gray-900 dark:text-gray-100">Chat</h3>
+        </div>
+        
+        {/* Active Widget Indicator */}
+        {activeWidget && widgetIcons[activeWidget] && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
+          >
+            {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
+            <span className="text-sm capitalize">Chatting about {activeWidget}</span>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
+        <AnimatePresence mode="popLayout">
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-xl px-4 py-2 ${
+                  message.sender === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100'
+                }`}
+              >
+                <p className="text-sm">{message.text}</p>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {isTyping && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start"
+          >
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3">
+              <div className="flex gap-1">
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 0.8, delay: 0 }}
+                  className="w-2 h-2 bg-gray-400 rounded-full"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }}
+                  className="w-2 h-2 bg-gray-400 rounded-full"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }}
+                  className="w-2 h-2 bg-gray-400 rounded-full"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <form onSubmit={sendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        {!activeWidget ? (
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
+            Select a widget to start chatting
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 text-white rounded-xl px-4 py-2 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
