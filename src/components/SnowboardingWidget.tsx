@@ -309,6 +309,13 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
   }, []);
 
   const getSeasonLabel = (season: string) => {
+    // Convert "2024-25" to "'24-'25" format
+    const match = season.match(/(\d{4})-(\d{2})/);
+    if (match) {
+      const startYear = match[1].slice(-2); // Last 2 digits of start year
+      const endYear = match[2]; // Last 2 digits of end year
+      return `'${startYear}-'${endYear} season`;
+    }
     return season.replace('20', "'");
   };
 
@@ -362,9 +369,9 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
     );
   }
 
-  const seasons = Array.from(new Set(chartData.flatMap(d => Object.keys(d).filter(k => k !== 'date')))).sort();
+  const seasons = Array.from(new Set(chartData.flatMap(d => Object.keys(d).filter(k => k !== 'date')))).sort() as string[];
   const previousSeason = seasons[seasons.length - 2];
-  const latestSeason = seasons[seasons.length - 1];
+  const latestSeason = seasons[seasons.length - 1] || '';
 
   return (
     <motion.div
