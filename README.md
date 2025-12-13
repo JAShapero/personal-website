@@ -108,4 +108,7 @@ npm run build
 ## License
 
 Private project - All rights reserved.
-  
+
+---
+
+Last updated: Deployment fix
