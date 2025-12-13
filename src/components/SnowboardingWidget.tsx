@@ -278,6 +278,19 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         // Ensure data points are sorted by season position (Nov -> May)
         chartDataPoints.sort((a, b) => a.position - b.position);
         
+        // For the latest season, stop the line after the most recent entry
+        // Find the last entry position for the latest season
+        if (latestSeasonEntries.length > 0) {
+          const lastEntryPosition = Math.max(...latestSeasonEntries.map(e => getSeasonPosition(e.parsedDate)));
+          
+          // Set latest season data to null after the last entry
+          chartDataPoints.forEach((dp, index) => {
+            if (dp.position > lastEntryPosition && dp[latestSeason] !== null) {
+              dp[latestSeason] = null;
+            }
+          });
+        }
+        
         // Remove position from data points before passing to chart
         chartDataPoints.forEach(dp => {
           delete dp.position;
@@ -403,10 +416,9 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
                 type="monotone" 
                 dataKey={previousSeason} 
                 stroke="#6366f1" 
-                strokeWidth={2}
+                strokeWidth={1.5}
                 name={getSeasonLabel(previousSeason)}
-                dot={{ fill: '#6366f1', r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={false}
                 connectNulls={false}
               />
             )}
@@ -414,19 +426,17 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
               type="monotone" 
               dataKey={latestSeason} 
               stroke="#06b6d4" 
-              strokeWidth={2}
+              strokeWidth={1.5}
               name={getSeasonLabel(latestSeason)}
-              dot={{ fill: '#06b6d4', r: 3 }}
-              activeDot={{ r: 5 }}
+              dot={false}
               connectNulls={false}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
       
-      <div className="mt-4 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
         <span>Season progress: {totalDays} days</span>
-        <span>Goal: 35 days</span>
       </div>
     </motion.div>
   );
