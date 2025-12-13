@@ -338,7 +338,7 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
       )}
 
       {/* Input */}
-      <form onSubmit={sendMessage} className={`px-4 pb-4 ${activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] ? 'pt-0 border-t border-gray-200 dark:border-gray-700' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`}>
+      <form onSubmit={sendMessage} className={`px-4 pb-4 ${activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`}>
         {!activeWidget ? (
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
             Select a widget to start chatting
