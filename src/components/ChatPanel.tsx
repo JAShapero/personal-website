@@ -80,10 +80,56 @@ const widgetIcons = {
   photos: { icon: Camera, color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', border: 'border-amber-500' }
 };
 
+const suggestedPrompts = {
+  about: [
+    "Tell me about your background",
+    "What's your experience?",
+    "What are your skills?",
+    "Where are you based?",
+    "What are your interests?"
+  ],
+  music: [
+    "What music do you listen to?",
+    "What are your favorite artists?",
+    "What's your most played song?",
+    "What genres do you like?",
+    "What's your current music taste?"
+  ],
+  snowboarding: [
+    "Where do you snowboard most often?",
+    "When was the last time you went snowboarding?",
+    "How many days have you snowboarded this season?",
+    "What's your favorite resort?",
+    "Compare this season to last season"
+  ],
+  biking: [
+    "What was your last bike ride?",
+    "How far do you typically ride?",
+    "What's your longest ride?",
+    "Where do you like to bike?",
+    "How much elevation do you climb?"
+  ],
+  books: [
+    "What are you currently reading?",
+    "What books have you read recently?",
+    "What's your favorite book?",
+    "What genres do you read?",
+    "How many books do you read per year?"
+  ],
+  photos: [
+    "Tell me about your photography",
+    "Where have you traveled?",
+    "What's your favorite photo?",
+    "What camera do you use?",
+    "What's your photography style?"
+  ]
+};
+
 export function ChatPanel({ activeWidget }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -104,6 +150,7 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
         sender: 'assistant',
         timestamp: new Date()
       }]);
+      setShowSuggestions(true); // Show suggestions when widget changes
     } else {
       setMessages([{
         id: 'initial',
@@ -111,12 +158,26 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
         sender: 'assistant',
         timestamp: new Date()
       }]);
+      setShowSuggestions(false);
     }
   }, [activeWidget]);
+
+  const handleSuggestionClick = (prompt: string) => {
+    setInput(prompt);
+    setShowSuggestions(false);
+    // Focus the input after setting the suggestion
+    setTimeout(() => {
+      const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement;
+      inputElement?.focus();
+    }, 0);
+  };
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !activeWidget) return;
+
+    // Hide suggestions when user sends a message
+    setShowSuggestions(false);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -276,6 +337,27 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Suggested Prompts */}
+      {activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] && (
+        <div className="px-4 pb-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 mt-3">Try asking:</p>
+          <div className="flex flex-wrap gap-2">
+            {suggestedPrompts[activeWidget].map((prompt, index) => (
+              <motion.button
+                key={index}
+                type="button"
+                onClick={() => handleSuggestionClick(prompt)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+              >
+                {prompt}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={sendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         {!activeWidget ? (
@@ -287,7 +369,19 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Hide suggestions when user starts typing
+                if (showSuggestions && e.target.value.trim()) {
+                  setShowSuggestions(false);
+                }
+              }}
+              onFocus={() => {
+                // Show suggestions again if input is empty and we're on first message
+                if (!input.trim() && messages.length <= 1) {
+                  setShowSuggestions(true);
+                }
+              }}
               placeholder="Type a message..."
               className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100"
             />
