@@ -75,7 +75,7 @@ function App() {
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-50 transition-colors duration-300">
         {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 w-full bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+        <header className="fixed top-0 left-0 right-0 z-50 w-full bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="container mx-auto px-4 py-4 max-w-7xl">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold">Jeremy Shapero</h1>
