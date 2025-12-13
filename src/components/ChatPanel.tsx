@@ -83,8 +83,9 @@ const widgetIcons = {
 
 const suggestedPrompts = {
   about: [
-    "Tell me about your background",
-    "What's your experience?"
+    "What are your areas of expertise as a PM?",
+    "Who's the GOAT 🏀",
+    "Fender or Gibson 🎸"
   ],
   music: [
     "What music do you listen to?",
