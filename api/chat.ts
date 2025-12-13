@@ -211,7 +211,7 @@ If a tool call fails or data isn't available, gracefully explain that the inform
 
     // Call Claude API
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-5-sonnet-20240620',
       max_tokens: 1024,
       system: systemPrompt,
       messages: allMessages.map(msg => ({
@@ -320,7 +320,7 @@ If a tool call fails or data isn't available, gracefully explain that the inform
 
       // Make a follow-up call with tool results
       const followUpResponse = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-3-5-sonnet-20240620',
         max_tokens: 1024,
         system: systemPrompt,
         messages: [
