@@ -83,33 +83,27 @@ const widgetIcons = {
 const suggestedPrompts = {
   about: [
     "Tell me about your background",
-    "What's your experience?",
-    "What are your skills?"
+    "What's your experience?"
   ],
   music: [
     "What music do you listen to?",
-    "What are your favorite artists?",
-    "What's your most played song?"
+    "What are your favorite artists?"
   ],
   snowboarding: [
     "Where do you snowboard most often?",
-    "What mountains have you visited?",
-    "How's your season pacing vs. last year?"
+    "What mountains have you visited?"
   ],
   biking: [
     "What was your last bike ride?",
-    "How far do you typically ride?",
-    "What's your longest ride?"
+    "How far do you typically ride?"
   ],
   books: [
     "What are you currently reading?",
-    "What books have you read recently?",
-    "What's your favorite book?"
+    "What books have you read recently?"
   ],
   photos: [
     "Tell me about your photography",
-    "Where have you traveled?",
-    "What's your favorite photo?"
+    "Where have you traveled?"
   ]
 };
 
@@ -327,8 +321,8 @@ export function ChatPanel({ activeWidget }: ChatPanelProps) {
 
       {/* Suggested Prompts */}
       {activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] && (
-        <div className="px-4 pb-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 mt-3">Try asking:</p>
+        <div className="px-4 pt-3 pb-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Try asking:</p>
           <div className="flex flex-wrap gap-2">
             {suggestedPrompts[activeWidget].map((prompt, index) => (
               <motion.button
