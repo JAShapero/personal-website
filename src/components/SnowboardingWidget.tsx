@@ -39,27 +39,19 @@ function parseCSVLine(line: string): string[] {
 }
 
 // Parse date string like "Monday, November 18" or "Wednesday, April 2"
-function parseDate(dateStr: string): Date {
+// seasonYear is the start year of the season (e.g., 2024 for "24-'25" season)
+function parseDate(dateStr: string, seasonYear: number): Date {
   // Remove day of week if present (e.g., "Monday, November 18" -> "November 18")
   const datePart = dateStr.includes(',') ? dateStr.split(',').slice(1).join(',').trim() : dateStr;
   
   // Parse "November 18" or "April 2" format
-  // Determine which year based on the month
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  // Create date object with season start year
+  let date = new Date(`${datePart}, ${seasonYear}`);
   
-  // Create date object
-  const date = new Date(`${datePart}, ${currentYear}`);
-  
-  // If the date is in the future (but we're in the same calendar year), 
-  // it's likely from the previous season (which starts in previous calendar year)
-  // Snowboarding season typically runs Nov-April, so Nov-Dec are current year, Jan-May could be next year
-  if (date > now) {
-    // If it's November or December, it might be from last year's season start
-    // Otherwise, subtract a year
-    if (date.getMonth() >= 10 || date.getMonth() <= 4) {
-      date.setFullYear(currentYear - 1);
-    }
+  // If the month is January-May, it belongs to the next calendar year
+  // (season runs Nov year1 - May year2)
+  if (date.getMonth() <= 4) { // Jan (0) through May (4)
+    date.setFullYear(seasonYear + 1);
   }
   
   return date;
@@ -78,10 +70,14 @@ function normalizeSeason(season: string): string {
   return season;
 }
 
-// Format date for chart display
-function formatDateForChart(date: Date): string {
+// Format date for chart display - include year if it helps distinguish
+function formatDateForChart(date: Date, includeYear: boolean = false): string {
   const month = date.toLocaleDateString('en-US', { month: 'short' });
   const day = date.getDate();
+  if (includeYear) {
+    const year = date.getFullYear();
+    return `${month} ${day} '${year.toString().slice(-2)}`;
+  }
   return `${month} ${day}`;
 }
 
@@ -129,7 +125,10 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
           if (!lines[i].trim()) continue;
           const [date, location, season, daysStr] = parseCSVLine(lines[i]);
           const normalizedSeason = normalizeSeason(season);
-          const parsedDate = parseDate(date);
+          
+          // Extract start year from season (e.g., "2024-25" -> 2024)
+          const seasonYear = parseInt(normalizedSeason.split('-')[0]);
+          const parsedDate = parseDate(date, seasonYear);
           
           entries.push({
             date,
@@ -140,7 +139,7 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
           });
         }
         
-        // Sort by date
+        // Sort by date chronologically
         entries.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
         
         // Get all seasons
@@ -162,15 +161,21 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         const latestSeasonEntries = entries.filter(e => e.season === latestSeason);
         const previousSeasonEntries = previousSeason ? entries.filter(e => e.season === previousSeason) : [];
         
-        // Combine all dates and sort
+        // Get all unique dates from all seasons, sorted chronologically
         const allEntryDates = new Set<number>();
         entries.forEach(e => allEntryDates.add(e.parsedDate.getTime()));
         const sortedTimes = Array.from(allEntryDates).sort((a, b) => a - b);
         
+        // Create data points for each date in chronological order
         sortedTimes.forEach(time => {
           const date = new Date(time);
-          const dateStr = formatDateForChart(date);
-          const dataPoint: any = { date: dateStr };
+          // Use month and day, but ensure we can distinguish seasons
+          // For seasons that overlap (e.g., Dec 2024 vs Dec 2025), we need to be careful
+          const dateStr = formatDateForChart(date, false);
+          const dataPoint: any = { 
+            date: dateStr,
+            dateTime: time // Store full timestamp for sorting
+          };
           
           // Find latest entry up to this date for each season
           const latestUpToDate = latestSeasonEntries
@@ -191,6 +196,9 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
             chartDataPoints.push(dataPoint);
           }
         });
+        
+        // Ensure data points are sorted by dateTime (should already be, but just to be safe)
+        chartDataPoints.sort((a, b) => a.dateTime - b.dateTime);
         
         setChartData(chartDataPoints);
         setLoading(false);
@@ -292,6 +300,9 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
               angle={-45}
               textAnchor="end"
               height={60}
+              type="category"
+              scale="point"
+              padding={{ left: 10, right: 10 }}
             />
             <YAxis 
               stroke="#9ca3af"
