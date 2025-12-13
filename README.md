@@ -3,6 +3,8 @@
 
 A personal website featuring interactive widgets with an AI-powered contextual chat system. Built with React, TypeScript, Tailwind CSS, and Claude API.
 
+---
+
 ## Features
 
 - **6 Interactive Widgets**: About Me, Music, Snowboarding, Biking, Books, and Photos
