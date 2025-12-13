@@ -74,8 +74,8 @@ function App() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-50 transition-colors duration-300">
-        {/* Sticky Header */}
-        <header className="sticky top-0 z-50 w-full bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+        {/* Fixed Header */}
+        <header className="fixed top-0 left-0 right-0 z-50 w-full bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
           <div className="container mx-auto px-4 py-4 max-w-7xl">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold">Jeremy Shapero</h1>
@@ -96,7 +96,7 @@ function App() {
           </div>
         </header>
 
-        <div className="container mx-auto px-4 py-12 max-w-7xl">
+        <div className="container mx-auto px-4 pt-24 pb-12 max-w-7xl">
 
           {/* Main Layout */}
           <div className="grid lg:grid-cols-[1fr_400px] gap-8">
