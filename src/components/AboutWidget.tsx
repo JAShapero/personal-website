@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, X } from 'lucide-react';
 
@@ -20,16 +20,36 @@ const photos: Photo[] = [
 ];
 
 export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
-  const handlePhotoClick = (e: React.MouseEvent, photo: Photo) => {
+  const handlePhotoClick = (e: React.MouseEvent, photoIndex: number) => {
     e.stopPropagation(); // Prevent widget click from firing
-    setSelectedPhoto(photo);
+    setSelectedPhotoIndex(photoIndex);
   };
 
   const closeModal = () => {
-    setSelectedPhoto(null);
+    setSelectedPhotoIndex(null);
   };
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (selectedPhotoIndex === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedPhotoIndex(null);
+      } else if (e.key === 'ArrowRight') {
+        setSelectedPhotoIndex((selectedPhotoIndex + 1) % photos.length);
+      } else if (e.key === 'ArrowLeft') {
+        setSelectedPhotoIndex((selectedPhotoIndex - 1 + photos.length) % photos.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPhotoIndex]);
+
+  const selectedPhoto = selectedPhotoIndex !== null ? photos[selectedPhotoIndex] : null;
 
   return (
     <>
@@ -63,7 +83,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
             <motion.div
               key={index}
               whileHover={{ scale: 1.05 }}
-              onClick={(e) => handlePhotoClick(e, photo)}
+              onClick={(e) => handlePhotoClick(e, index)}
               className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 cursor-zoom-in"
             >
               <img 
