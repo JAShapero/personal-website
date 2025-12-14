@@ -280,7 +280,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
             >
               {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
-              <span className="text-sm capitalize">Chatting about {activeWidget}</span>
+              <span className="text-sm capitalize">Chatting about {activeWidget === 'about' ? 'me' : activeWidget}</span>
             </motion.div>
           )}
         </div>
