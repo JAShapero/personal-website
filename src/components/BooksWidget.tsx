@@ -72,7 +72,7 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
+      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
         isActive 
           ? 'border-orange-500 shadow-md' 
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
@@ -85,7 +85,7 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
         <h3 className="text-gray-900 dark:text-gray-100">Currently Reading</h3>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 flex-1">
         {books.map((book) => (
           <div key={book.id} className="flex gap-3">
             {/* Book Cover */}
@@ -123,7 +123,7 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
       </div>
 
       {/* API Integration Note */}
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+      <div className="mt-auto text-xs text-gray-500 dark:text-gray-400 text-center">
         Connect to Hardcover API for live data
       </div>
     </motion.div>

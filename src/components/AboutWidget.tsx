@@ -37,11 +37,12 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
         onClick={onClick}
-        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
+        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
           isActive 
             ? 'border-blue-500 shadow-md' 
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
         }`}
+        style={{ minHeight: 'fit-content' }}
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
@@ -49,7 +50,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
           </div>
           <h3 className="text-gray-900 dark:text-gray-100">About Me</h3>
         </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2 mb-6">
+        <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2 mb-4 flex-1">
           <p>Hey, I'm Jeremy 👋</p>
           <p>I'm a PM based in Boulder, Colorado.</p>
           <p>I love building data and AI products, and I love tackling the ambiguity of 0 to 1 opportunities.</p>
@@ -57,7 +58,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
         </div>
         
         {/* Photo Gallery */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-3 mt-auto">
           {photos.map((photo, index) => (
             <motion.div
               key={index}

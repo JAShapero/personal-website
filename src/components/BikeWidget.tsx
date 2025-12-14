@@ -68,7 +68,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
 
   if (!activity) {
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 h-[300px] flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 h-full flex flex-col items-center justify-center">
         <p className="text-gray-400 dark:text-gray-500">Loading ride data...</p>
       </div>
     );
@@ -79,7 +79,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
+      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
         isActive 
           ? 'border-green-500 shadow-md' 
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
@@ -125,7 +125,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 flex-1">
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
           <div className="flex items-center gap-1 mb-1">
             <TrendingUp className="w-3 h-3 text-green-600 dark:text-green-400" />
@@ -152,7 +152,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       </div>
 
       {/* API Integration Note */}
-      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
+      <div className="mt-auto text-xs text-gray-500 dark:text-gray-400 text-center">
         Connect to Strava API for live data
       </div>
     </motion.div>
