@@ -198,7 +198,7 @@ function getWidgetContext(widget: string | null): string {
     case 'site':
       return 'You are helping visitors understand how this website is built. Discuss the tech stack, architecture, APIs, and implementation details. The site uses React, TypeScript, Tailwind CSS, Vite, Vercel serverless functions, and integrates with Claude AI, Spotify, Strava, and Hardcover APIs.';
     default:
-      return 'You are a helpful assistant for Jeremy\'s personal website. You can answer questions about any aspect of Jeremy\'s life, work, interests, and activities.';
+      return 'You are a helpful assistant for Jeremy\'s personal website.';
   }
 }
 
@@ -206,7 +206,7 @@ function getWidgetContext(widget: string | null): string {
 const tools = [
   {
     name: 'get_about_info',
-    description: 'Get information about Jeremy\'s background, career, skills, interests, and personal details from the About Me document. Use this tool when asked about: career, work experience, job history, product management, skills, expertise, background, bio, personal information, location, interests, hobbies, education, or professional experience.',
+    description: 'Get information about Jeremy\'s background, career, skills, interests, and personal details from the About Me document.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -220,7 +220,7 @@ const tools = [
   },
   {
     name: 'get_photos_info',
-    description: 'Get information about Jeremy\'s photos, travel experiences, photography style, and memories from the photo metadata. Use this tool when asked about: photography, photos, pictures, travel, trips, locations visited, places, memories, camera, photography style, or visual content.',
+    description: 'Get information about Jeremy\'s photos, travel experiences, photography style, and memories from the photo metadata.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -234,7 +234,7 @@ const tools = [
   },
   {
     name: 'get_snowboarding_data',
-    description: 'Get Jeremy\'s snowboarding statistics including days snowboarded, season progress, locations, dates, and historical data. Use this tool when asked about: snowboarding, skiing, winter sports, mountains, resorts, Breckenridge, Keystone, season progress, days snowboarded, snowboarding locations, or outdoor winter activities. Can answer questions about where he snowboards most, last time/location, total days, season comparisons, etc.',
+    description: 'Get Jeremy\'s snowboarding statistics including days snowboarded, season progress, locations, dates, and historical data. Can answer questions about where he snowboards most, last time/location, total days, season comparisons, etc.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -252,7 +252,7 @@ const tools = [
   },
   {
     name: 'get_biking_data',
-    description: 'Get Jeremy\'s bike ride data from Strava API including distance, elevation, duration, and route information. Use this tool when asked about: biking, cycling, bike rides, Strava, distance, elevation, longest ride, recent rides, total distance, elevation gain, bike routes, or outdoor cycling activities.',
+    description: 'Get Jeremy\'s bike ride data from Strava API including distance, elevation, duration, and route information.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -266,7 +266,7 @@ const tools = [
   },
   {
     name: 'get_books_data',
-    description: 'Get Jeremy\'s reading data from Hardcover API including currently reading books, reading progress, and reading history. Use this tool when asked about: books, reading, currently reading, favorite books, book recommendations, authors, reading habits, or literature.',
+    description: 'Get Jeremy\'s reading data from Hardcover API including currently reading books, reading progress, and reading history.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -280,7 +280,7 @@ const tools = [
   },
   {
     name: 'get_music_data',
-    description: 'Get Jeremy\'s music listening data from Spotify API including recently played tracks, top tracks, and listening statistics. Use this tool when asked about: music, songs, tracks, artists, Spotify, listening habits, favorite music, recently played, top songs, favorite artists, or music recommendations.',
+    description: 'Get Jeremy\'s music listening data from Spotify API including recently played tracks, top tracks, and listening statistics.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -331,23 +331,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const systemPrompt = `${widgetContext}
 
 You have access to tools that let you retrieve information about Jeremy's:
-
-1. About Me (get_about_info): Career, background, experience, skills, interests
-2. Music (get_music_data): Listening habits, favorite artists, recently played tracks
-3. Snowboarding (get_snowboarding_data): Season progress, locations, days snowboarded
-4. Biking (get_biking_data): Rides, distance, elevation, Strava data
-5. Books (get_books_data): Reading habits, currently reading, book recommendations
-6. Photos (get_photos_info): Photography, travel, memories
-7. Site (general knowledge): Technical details, architecture, implementation
-
-PLANNING STEP: Before answering, analyze the user's query to determine which tools are relevant. If a query spans multiple topics, use multiple tools and synthesize the information.
-
-Examples of multi-tool queries:
-- "What outdoor activities does Jeremy do?" → use both get_biking_data and get_snowboarding_data
-- "Tell me about Jeremy's hobbies and interests" → use get_about_info, get_biking_data, get_snowboarding_data, get_music_data, get_books_data
-- "What does Jeremy do for fun?" → use multiple relevant tools based on context
-
-When you begin processing a query, first provide a brief planning statement explaining which tools you'll use and why. Format this as: "I'll use [tool names] to answer this question about [topic]."
+- About Me information (background, career, interests)
+- Photos and travel experiences
+- Snowboarding statistics and season data
+- Biking/cycling activities and Strava data
+- Books and reading habits
+- Music listening habits and Spotify data
 
 Use these tools to answer questions accurately. Be friendly, conversational, and helpful. Reference specific details when available.
 
@@ -381,7 +370,6 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     // Handle tool use if present
     let finalContent = '';
     let toolResults: any[] = [];
-    let planningInfo: { tools: string[]; reasoning: string } | null = null;
 
     if (!response.content || response.content.length === 0) {
       return res.status(500).json({
@@ -390,65 +378,12 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       });
     }
 
-    // Extract planning information from response
-    const textContent = response.content.find((item: any) => item.type === 'text');
-    const toolCalls = response.content.filter((item: any) => item.type === 'tool_use') as any[];
-    
-    // Extract planning from text content or tool calls
-    if (toolCalls.length > 0) {
-      const toolsUsed = toolCalls.map((tc: any) => tc.name);
-      let reasoning = '';
-      
-      if (textContent && textContent.text) {
-        // Look for planning statement in text (e.g., "I'll use [tools] to answer...")
-        const planningMatch = textContent.text.match(/I'll use (?:the )?([^.]+?)(?: tool)?(?:s)? (?:to|for)/i) ||
-                             textContent.text.match(/I'll (?:use|check|query) (?:the )?([^.]+?)(?: tool)?(?:s)?/i) ||
-                             textContent.text.match(/I'll (?:gather|retrieve|get) (?:information|data) (?:from|using) (?:the )?([^.]+?)(?: tool)?(?:s)?/i);
-        
-        if (planningMatch) {
-          // Extract the first sentence or up to 200 chars
-          const firstSentence = textContent.text.split(/[.!?]/)[0];
-          reasoning = firstSentence.length > 200 
-            ? firstSentence.substring(0, 200) + '...'
-            : firstSentence;
-        } else {
-          // Generate reasoning from tool names
-          const toolNamesReadable = toolsUsed.map(name => {
-            return name.replace('get_', '').replace('_', ' ').replace(/_/g, ' ');
-          }).join(', ');
-          reasoning = `I'll use ${toolNamesReadable} to answer this question.`;
-        }
-      } else {
-        // No text content, generate reasoning from tool names
-        const toolNamesReadable = toolsUsed.map(name => {
-          return name.replace('get_', '').replace('_', ' ').replace(/_/g, ' ');
-        }).join(', ');
-        reasoning = `I'll use ${toolNamesReadable} to answer this question.`;
-      }
-      
-      planningInfo = {
-        tools: toolsUsed,
-        reasoning: reasoning
-      };
-    } else if (textContent && textContent.text) {
-      // No tool calls, but check if there's a planning statement in text
-      const planningMatch = textContent.text.match(/I'll use (?:the )?([^.]+?)(?: tool)?(?:s)? (?:to|for)/i) ||
-                           textContent.text.match(/I'll (?:use|check|query) (?:the )?([^.]+?)(?: tool)?(?:s)?/i);
-      
-      if (planningMatch) {
-        const firstSentence = textContent.text.split(/[.!?]/)[0];
-        planningInfo = {
-          tools: [],
-          reasoning: firstSentence.length > 200 
-            ? firstSentence.substring(0, 200) + '...'
-            : firstSentence
-        };
-      }
-    }
-
     if (response.content[0].type === 'text') {
       finalContent = response.content[0].text;
     } else if (response.content[0].type === 'tool_use') {
+      // Process tool calls
+      const toolCalls = response.content.filter((item: any) => item.type === 'tool_use') as any[];
+      
       for (const toolCall of toolCalls) {
         let toolResult: any;
         
@@ -993,7 +928,6 @@ If a tool call fails or data isn't available, gracefully explain that the inform
 
     return res.status(200).json({
       message: finalContent,
-      planning: planningInfo || undefined,
       toolResults: toolResults.length > 0 ? toolResults : undefined,
     });
   } catch (error: any) {

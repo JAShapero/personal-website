@@ -11,12 +11,8 @@ interface ChatPanelProps {
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'assistant' | 'planning';
+  sender: 'user' | 'assistant';
   timestamp: Date;
-  planning?: {
-    tools: string[];
-    reasoning: string;
-  };
 }
 
 const widgetContexts = {
@@ -168,16 +164,16 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
     } else {
       setMessages([{
         id: 'initial',
-        text: "👋 Hey! Ask me anything about Jeremy!",
+        text: "👋 Hey! Click on any widget to start chatting about it!",
         sender: 'assistant',
         timestamp: new Date()
       }]);
-      setShowSuggestions(true); // Show general suggestions when no widget is active
+      setShowSuggestions(false);
     }
   }, [activeWidget]);
 
   const sendMessageToAPI = async (messageText: string) => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !activeWidget) return;
 
     // Hide suggestions when user sends a message
     setShowSuggestions(false);
@@ -227,18 +223,6 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
       const data = await response.json();
       
-      // Add planning message if available
-      if (data.planning) {
-        const planningMessage: Message = {
-          id: `planning-${Date.now()}`,
-          text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
-          sender: 'planning',
-          timestamp: new Date(),
-          planning: data.planning
-        };
-        setMessages(prev => [...prev, planningMessage]);
-      }
-      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: data.message || 'Sorry, I encountered an error.',
@@ -254,8 +238,8 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
       const isOverloaded = error.message?.includes('overloaded') || error.message?.includes('Overloaded') || error.message?.includes('temporarily unavailable');
       
       // Fallback to mock response if API fails
-      const context = activeWidget ? widgetContexts[activeWidget] : null;
-      const randomResponse = context?.responses?.[Math.floor(Math.random() * (context?.responses?.length || 1))] || 'I had trouble processing that request.';
+      const context = widgetContexts[activeWidget];
+      const randomResponse = context?.responses?.[Math.floor(Math.random() * (context.responses?.length || 1))] || 'I had trouble processing that request.';
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -280,7 +264,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !activeWidget) return;
     
     const userInput = input;
     setInput('');
@@ -339,17 +323,9 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
                 className={`max-w-[80%] rounded-xl px-4 py-2 ${
                   message.sender === 'user'
                     ? 'bg-blue-600 text-white'
-                    : message.sender === 'planning'
-                    ? 'bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 italic'
                     : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100'
                 }`}
               >
-                {message.sender === 'planning' && message.planning && (
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="w-3 h-3 text-blue-500" />
-                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Planning</span>
-                  </div>
-                )}
                 <p className="text-sm">{message.text}</p>
               </div>
             </motion.div>
@@ -388,88 +364,62 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
       </div>
 
       {/* Suggested Prompts */}
-      {showSuggestions && messages.length <= 1 && (
+      {activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] && (
         <div className="px-4 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Try asking:</p>
           <div className="flex flex-wrap gap-2 mb-2">
-            {activeWidget && suggestedPrompts[activeWidget] ? (
-              suggestedPrompts[activeWidget].map((prompt, index) => (
-                <motion.button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSuggestionClick(prompt)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  {prompt}
-                </motion.button>
-              ))
-            ) : (
-              <>
-                <motion.button
-                  type="button"
-                  onClick={() => handleSuggestionClick("What are your areas of expertise?")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  What are your areas of expertise?
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={() => handleSuggestionClick("What outdoor activities do you do?")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  What outdoor activities do you do?
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={() => handleSuggestionClick("What are you currently listening to?")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  What are you currently listening to?
-                </motion.button>
-              </>
-            )}
+            {suggestedPrompts[activeWidget].map((prompt, index) => (
+              <motion.button
+                key={index}
+                type="button"
+                onClick={() => handleSuggestionClick(prompt)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+              >
+                {prompt}
+              </motion.button>
+            ))}
           </div>
         </div>
       )}
 
       {/* Input */}
-      <form onSubmit={sendMessage} className={`px-4 pb-3 ${showSuggestions && messages.length <= 1 ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`} style={{ paddingBottom: '0.75rem' }}>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              // Hide suggestions when user starts typing
-              if (showSuggestions && e.target.value.trim()) {
-                setShowSuggestions(false);
-              }
-            }}
-            onFocus={() => {
-              // Show suggestions again if input is empty and we're on first message
-              if (!input.trim() && messages.length <= 1) {
-                setShowSuggestions(true);
-              }
-            }}
-            placeholder="Type a message..."
-            className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 text-white rounded-xl px-4 py-2 transition-colors"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+      <form onSubmit={sendMessage} className={`px-4 pb-3 ${activeWidget && showSuggestions && messages.length <= 1 && suggestedPrompts[activeWidget] ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`} style={{ paddingBottom: '0.75rem' }}>
+        {!activeWidget ? (
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
+            Select a widget to start chatting
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Hide suggestions when user starts typing
+                if (showSuggestions && e.target.value.trim()) {
+                  setShowSuggestions(false);
+                }
+              }}
+              onFocus={() => {
+                // Show suggestions again if input is empty and we're on first message
+                if (!input.trim() && messages.length <= 1) {
+                  setShowSuggestions(true);
+                }
+              }}
+              placeholder="Type a message..."
+              className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 text-white rounded-xl px-4 py-2 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );
