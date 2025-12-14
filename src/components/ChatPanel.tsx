@@ -62,7 +62,7 @@ const widgetContexts = {
     ]
   },
   books: {
-    greeting: "I love reading! Currently working through some great books.",
+    greeting: "Recovering English major 🤓",
     responses: [
       "The Pragmatic Programmer is a classic - every developer should read it at least once.",
       "I'm also reading Atomic Habits by James Clear. The small changes really do add up!",
