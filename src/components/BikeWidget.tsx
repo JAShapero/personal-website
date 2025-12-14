@@ -255,6 +255,21 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
     fetchStravaData();
   }, []);
 
+  // Add/remove body class when modal is open
+  useEffect(() => {
+    if (isMapModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'relative';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+    };
+  }, [isMapModalOpen]);
+
   const fetchStravaData = async () => {
     setLoading(true);
     setError(null);
@@ -416,8 +431,20 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMapModalOpen(false)}
-              className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
-              style={{ margin: 0 }}
+              style={{ 
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 99999,
+                margin: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem'
+              }}
             >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -426,18 +453,28 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
                 transition={{ type: 'spring', damping: 25 }}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full max-w-6xl h-[90vh] bg-white dark:bg-gray-800 rounded-lg overflow-hidden"
+                style={{ 
+                  zIndex: 100000,
+                  position: 'relative'
+                }}
               >
                 {/* Close Button */}
                 <button
                   onClick={() => setIsMapModalOpen(false)}
-                  className="absolute top-4 right-4 z-[10000] p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors shadow-lg"
+                  className="absolute top-4 right-4 p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors shadow-lg"
                   aria-label="Close map"
+                  style={{ 
+                    zIndex: 100001,
+                    position: 'absolute'
+                  }}
                 >
                   <X className="w-6 h-6" />
                 </button>
 
                 {/* Interactive Map */}
-                <RouteMap polyline={activity.route_polyline} interactive={true} />
+                <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}>
+                  <RouteMap polyline={activity.route_polyline} interactive={true} />
+                </div>
               </motion.div>
             </motion.div>
           )}
