@@ -51,6 +51,93 @@ function formatElevation(meters: number): string {
   return `${Math.round(feet)} ft`;
 }
 
+// Decode Google polyline format to coordinates
+function decodePolyline(encoded: string): Array<[number, number]> {
+  const coordinates: Array<[number, number]> = [];
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let shift = 0;
+    let result = 0;
+    let byte: number;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLat = (result & 1) !== 0 ? ~(result >> 1) : (result >> 1);
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLng = (result & 1) !== 0 ? ~(result >> 1) : (result >> 1);
+    lng += deltaLng;
+
+    coordinates.push([lat / 1e5, lng / 1e5]);
+  }
+
+  return coordinates;
+}
+
+// Convert lat/lng coordinates to SVG path
+function coordinatesToPath(coordinates: Array<[number, number]>, width: number, height: number): string {
+  if (coordinates.length === 0) return '';
+
+  // Find bounds
+  let minLat = coordinates[0][0];
+  let maxLat = coordinates[0][0];
+  let minLng = coordinates[0][1];
+  let maxLng = coordinates[0][1];
+
+  coordinates.forEach(([lat, lng]) => {
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
+    minLng = Math.min(minLng, lng);
+    maxLng = Math.max(maxLng, lng);
+  });
+
+  // Add padding
+  const latRange = maxLat - minLat || 0.01;
+  const lngRange = maxLng - minLng || 0.01;
+  const padding = 0.1;
+  const paddedLatRange = latRange * (1 + padding * 2);
+  const paddedLngRange = lngRange * (1 + padding * 2);
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+
+  minLat = centerLat - paddedLatRange / 2;
+  maxLat = centerLat + paddedLatRange / 2;
+  minLng = centerLng - paddedLngRange / 2;
+  maxLng = centerLng + paddedLngRange / 2;
+
+  // Convert to SVG coordinates
+  const scaleX = width / (maxLng - minLng);
+  const scaleY = height / (maxLat - minLat);
+  const scale = Math.min(scaleX, scaleY);
+
+  const path = coordinates
+    .map(([lat, lng], index) => {
+      const x = ((lng - minLng) * scale) + (width - (maxLng - minLng) * scale) / 2;
+      const y = height - ((lat - minLat) * scale) - (height - (maxLat - minLat) * scale) / 2;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .join(' ');
+
+  return path;
+}
+
 function formatActivityDisplay(activity: StravaActivity): string {
   // Format date as MM/DD/YY
   let dateStr = '';
@@ -199,33 +286,86 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         </div>
       </div>
 
-      {/* Map placeholder - Replace with actual route map */}
+      {/* Route Map */}
       <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 h-32 relative">
-        {/* TODO: Use Mapbox, Google Maps, or Leaflet to render the actual route */}
-        {/* Decode the polyline and display on map */}
-        <svg className="w-full h-full" viewBox="0 0 300 128">
-          <defs>
-            <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style={{ stopColor: '#10b981', stopOpacity: 0.8 }} />
-              <stop offset="100%" style={{ stopColor: '#059669', stopOpacity: 1 }} />
-            </linearGradient>
-          </defs>
-          {/* Mock route path - replace with actual decoded polyline */}
-          <path
-            d="M 10 100 Q 50 40, 100 60 T 200 50 T 290 80"
-            stroke="url(#routeGradient)"
-            strokeWidth="3"
-            fill="none"
-            strokeLinecap="round"
-          />
-          {/* Start marker */}
-          <circle cx="10" cy="100" r="4" fill="#10b981" />
-          {/* End marker */}
-          <circle cx="290" cy="80" r="4" fill="#059669" />
-        </svg>
-        <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded px-2 py-1 text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
-          Route Map
-        </div>
+        {activity.route_polyline ? (
+          (() => {
+            try {
+              const coordinates = decodePolyline(activity.route_polyline);
+              const path = coordinatesToPath(coordinates, 300, 128);
+              const startPoint = coordinates[0];
+              const endPoint = coordinates[coordinates.length - 1];
+              
+              // Calculate SVG coordinates for markers
+              let minLat = coordinates[0][0];
+              let maxLat = coordinates[0][0];
+              let minLng = coordinates[0][1];
+              let maxLng = coordinates[0][1];
+              coordinates.forEach(([lat, lng]) => {
+                minLat = Math.min(minLat, lat);
+                maxLat = Math.max(maxLat, lat);
+                minLng = Math.min(minLng, lng);
+                maxLng = Math.max(maxLng, lng);
+              });
+              const latRange = maxLat - minLat || 0.01;
+              const lngRange = maxLng - minLng || 0.01;
+              const padding = 0.1;
+              const paddedLatRange = latRange * (1 + padding * 2);
+              const paddedLngRange = lngRange * (1 + padding * 2);
+              const centerLat = (minLat + maxLat) / 2;
+              const centerLng = (minLng + maxLng) / 2;
+              minLat = centerLat - paddedLatRange / 2;
+              maxLat = centerLat + paddedLatRange / 2;
+              minLng = centerLng - paddedLngRange / 2;
+              maxLng = centerLng + paddedLngRange / 2;
+              const width = 300;
+              const height = 128;
+              const scaleX = width / (maxLng - minLng);
+              const scaleY = height / (maxLat - minLat);
+              const scale = Math.min(scaleX, scaleY);
+              
+              const startX = ((startPoint[1] - minLng) * scale) + (width - (maxLng - minLng) * scale) / 2;
+              const startY = height - ((startPoint[0] - minLat) * scale) - (height - (maxLat - minLat) * scale) / 2;
+              const endX = ((endPoint[1] - minLng) * scale) + (width - (maxLng - minLng) * scale) / 2;
+              const endY = height - ((endPoint[0] - minLat) * scale) - (height - (maxLat - minLat) * scale) / 2;
+
+              return (
+                <svg className="w-full h-full" viewBox="0 0 300 128" preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" style={{ stopColor: '#10b981', stopOpacity: 0.8 }} />
+                      <stop offset="100%" style={{ stopColor: '#059669', stopOpacity: 1 }} />
+                    </linearGradient>
+                  </defs>
+                  {/* Route path */}
+                  <path
+                    d={path}
+                    stroke="url(#routeGradient)"
+                    strokeWidth="2.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Start marker */}
+                  <circle cx={startX} cy={startY} r="4" fill="#10b981" stroke="white" strokeWidth="1.5" />
+                  {/* End marker */}
+                  <circle cx={endX} cy={endY} r="4" fill="#059669" stroke="white" strokeWidth="1.5" />
+                </svg>
+              );
+            } catch (error) {
+              console.error('Error rendering map:', error);
+              return (
+                <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
+                  Map unavailable
+                </div>
+              );
+            }
+          })()
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
+            No route data available
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
