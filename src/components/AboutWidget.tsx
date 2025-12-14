@@ -13,10 +13,10 @@ interface Photo {
 }
 
 const photos: Photo[] = [
-  { url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop', caption: 'Mountain sunset' },
-  { url: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&h=400&fit=crop', caption: 'Forest trail' },
-  { url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=400&fit=crop', caption: 'Summit view' },
-  { url: 'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=400&h=400&fit=crop', caption: 'Mountain biking' }
+  { url: '/images/5ba3cfbc-24f8-4387-882a-1ddcf4bf67b1.jpg', caption: 'Beach sunset' },
+  { url: '/images/90841310-BLK-00139.jpeg', caption: 'Surfing at sunset' },
+  { url: '/images/cc340051-8721-4bc1-ae20-06ee62876c9f.jpg', caption: 'Family by the river' },
+  { url: '/images/IDG_20250705_121627_157.jpeg', caption: 'Mountain biking' }
 ];
 
 export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
@@ -105,7 +105,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
 
               {/* Photo */}
               <img
-                src={selectedPhoto.url.replace('w=400&h=400', 'w=1200&h=1200')}
+                src={selectedPhoto.url}
                 alt={selectedPhoto.caption}
                 className="w-full h-full object-contain rounded-lg"
               />
