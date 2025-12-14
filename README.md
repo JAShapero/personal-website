@@ -53,9 +53,10 @@ npm run dev
    - Optional: `SPOTIFY_ACCESS_TOKEN`, `STRAVA_ACCESS_TOKEN`, `HARDCOVER_API_KEY`
 4. Deploy!
 
-## Setup Guide
+## Setup Guides
 
-See **[docs/API_SETUP.md](./docs/API_SETUP.md)** for detailed API setup instructions.
+- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Complete guide for getting your site hosted with a custom domain
+- **[API Setup Guide](./docs/API_SETUP.md)** - Detailed API setup instructions
 
 ## Project Structure
 

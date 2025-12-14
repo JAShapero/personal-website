@@ -20,9 +20,55 @@ This document contains potential enhancements and features to consider for futur
 
 ---
 
+### 2. Add LLM Debug/Details Toggle to Chat
+- **Goal**: Add a toggle that reveals technical details about what's happening behind the scenes with the LLM during chat interactions
+- **Features to Display**:
+  - **Request Details**: Show what messages are being sent to the LLM API each time
+    - System prompts
+    - User messages
+    - Conversation history
+    - Message structure and formatting
+  - **Reasoning/Planning**: Expose any planning or reasoning steps that the LLM is performing
+    - Internal thought processes
+    - Step-by-step reasoning (if available from the API)
+    - Decision-making logic
+  - **Streaming Information**: Display what tokens are being received as they stream in
+    - Real-time token display
+    - Token-by-token streaming visualization
+    - Completion status
+  - **Token Usage**: Show total token counts for each request
+    - Input tokens (prompt + context)
+    - Output tokens (response)
+    - Total tokens per request
+    - Cumulative token usage for the session
+  - **Tool/API Usage**: Display what tools and APIs are being used
+    - Which tools are being called
+    - API endpoints being hit
+    - Function calls and their parameters
+    - Tool execution results
+- **Design Ideas**:
+  - Toggle button/switch in the chat interface (e.g., "Show Details" or "Debug Mode")
+  - Expandable panel or sidebar that shows technical information
+  - Color-coded sections for different types of information
+  - Collapsible sections for each request/response cycle
+  - JSON viewer for structured data
+  - Token counter with visual indicators
+  - Timeline view showing the sequence of API calls
+- **Implementation**:
+  - Add toggle state to `ChatPanel.tsx`
+  - Modify `api/chat.ts` to capture and return debug information
+  - Create a debug/details panel component
+  - Display request/response data in a readable format
+  - Track token usage from API responses
+  - Log tool calls and API usage
+  - Consider using a library like `react-json-view` for JSON display
+  - Add copy-to-clipboard functionality for debugging
+
+---
+
 ## Widgets
 
-### 2. Add "About the Site" Widget
+### 3. Add "About the Site" Widget
 - **Goal**: Create a widget that shows the site's architecture and explains what technologies are being used and how
 - **Features**:
   - Display tech stack visually (React, TypeScript, Tailwind, etc.)

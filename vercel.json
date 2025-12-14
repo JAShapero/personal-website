@@ -11,6 +11,9 @@
     },
     "api/strava.ts": {
       "maxDuration": 10
+    },
+    "api/hardcover.ts": {
+      "maxDuration": 10
     }
   }
 }

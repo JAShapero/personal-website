@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Loader2 } from 'lucide-react';
 
 interface BooksWidgetProps {
   isActive: boolean;
@@ -8,11 +8,6 @@ interface BooksWidgetProps {
   className?: string;
 }
 
-// Mock Hardcover API data - Replace with real API call
-// To integrate with Hardcover API:
-// 1. Get your API key from Hardcover
-// 2. Fetch currently reading books: GET https://api.hardcover.app/v1/users/{username}/reading
-// 3. Or use GraphQL endpoint: https://hardcover.app/graphql
 interface Book {
   id: string;
   title: string;
@@ -46,26 +41,42 @@ const mockBooksData: Book[] = [
 
 export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetProps) {
   const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: Replace with actual Hardcover API call
-    // Example GraphQL query:
-    // query {
-    //   me {
-    //     currently_reading {
-    //       book {
-    //         title
-    //         contributions { author { name } }
-    //         image
-    //       }
-    //       progress_pages
-    //     }
-    //   }
-    // }
-    
-    // For now, using mock data
-    setBooks(mockBooksData);
+    fetchBooksData();
   }, []);
+
+  const fetchBooksData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/hardcover');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // If Hardcover is not configured, use mock data
+        if (response.status === 401 || response.status === 500) {
+          setBooks(mockBooksData);
+          setLoading(false);
+          return;
+        }
+        throw new Error(errorData.message || 'Failed to fetch books');
+      }
+
+      const data = await response.json();
+      setBooks(data.books || []);
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error fetching Hardcover data:', err);
+      setError('Failed to load books data');
+      // Fallback to mock data on error
+      setBooks(mockBooksData);
+      setLoading(false);
+    }
+  };
 
   return (
     <motion.div
@@ -85,47 +96,69 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
         <h3 className="text-gray-900 dark:text-gray-100">Currently Reading</h3>
       </div>
 
-      <div className="space-y-4 flex-1">
-        {books.map((book) => (
-          <div key={book.id} className="flex gap-3">
-            {/* Book Cover */}
-            <div className="w-16 h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-              <img 
-                src={book.cover_url} 
-                alt={book.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            {/* Book Info */}
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm truncate text-gray-900 dark:text-gray-100">{book.title}</h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{book.author}</p>
-              
-              {/* Progress Bar */}
-              <div className="space-y-1">
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${book.progress}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full bg-green-500"
+      {loading ? (
+        <div className="flex items-center justify-center py-8 flex-1">
+          <Loader2 className="w-6 h-6 text-green-600 dark:text-green-400 animate-spin" />
+        </div>
+      ) : error && books.length === 0 ? (
+        <div className="text-center py-4 text-sm text-red-500 dark:text-red-400 flex-1">
+          {error}
+        </div>
+      ) : books.length === 0 ? (
+        <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400 flex-1">
+          No books currently being read
+        </div>
+      ) : (
+        <div className="space-y-4 flex-1">
+          {books.map((book) => (
+            <div key={book.id} className="flex gap-3">
+              {/* Book Cover */}
+              <div className="w-16 h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+                {book.cover_url ? (
+                  <img 
+                    src={book.cover_url} 
+                    alt={book.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to a placeholder if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
                   />
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>{book.progress}%</span>
-                  <span>{book.current_page} / {book.total_pages}</span>
-                </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
+                    No Cover
+                  </div>
+                )}
+              </div>
+
+              {/* Book Info */}
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm truncate text-gray-900 dark:text-gray-100">{book.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{book.author}</p>
+                
+                {/* Progress Bar */}
+                {book.total_pages > 0 && (
+                  <div className="space-y-1">
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${book.progress}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className="h-full bg-green-500"
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>{book.progress}%</span>
+                      <span>{book.current_page} / {book.total_pages}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* API Integration Note */}
-      <div className="mt-auto text-xs text-gray-500 dark:text-gray-400 text-center">
-        Connect to Hardcover API for live data
-      </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
