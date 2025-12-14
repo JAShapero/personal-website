@@ -44,7 +44,7 @@ const widgetContexts = {
     ]
   },
   biking: {
-    greeting: "Biking keeps me active year-round! What would you like to know?",
+    greeting: "⛰️🚴💨",
     responses: [
       "I ride both mountain and road bikes - they each have their own appeal.",
       "My favorite trail is the Highline Canal Trail - great for long rides.",
@@ -96,8 +96,8 @@ const suggestedPrompts = {
     "What mountains did you visit last season?"
   ],
   biking: [
-    "What was your last bike ride?",
-    "How far do you typically ride?"
+    "Longest ride over the past year?",
+    "How much elevation past year?"
   ],
   books: [
     "What are you currently reading?",
