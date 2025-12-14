@@ -35,7 +35,7 @@ const widgetContexts = {
     ]
   },
   snowboarding: {
-    greeting: "Snowboarding is my winter passion! Let me tell you about it.",
+    greeting: "I traded my surfboard for a snowboard when I moved to Colorado",
     responses: [
       "I usually ride at Breckenridge and Keystone - they have amazing terrain parks!",
       "My last session was in February 2024. Can't wait for the next snow season!",
