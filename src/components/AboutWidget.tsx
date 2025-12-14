@@ -93,7 +93,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-2xl max-h-[80vh] w-full"
+              className="relative max-w-lg max-h-[70vh] w-full"
             >
               {/* Close Button */}
               <button
