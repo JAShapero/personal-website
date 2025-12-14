@@ -9,6 +9,7 @@ import { BikeWidget } from './components/BikeWidget';
 import { BooksWidget } from './components/BooksWidget';
 import { ChatPanel } from './components/ChatPanel';
 import { DraggableWidget } from './components/DraggableWidget';
+import { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/tooltip';
 
 export type WidgetType = 'about' | 'music' | 'snowboarding' | 'biking' | 'books' | null;
 
@@ -22,7 +23,9 @@ function App() {
   const [activeWidget, setActiveWidget] = useState<WidgetType>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [emailCopied, setEmailCopied] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+  const emailAddress = 'jeremy.shapero@gmail.com';
   const [widgets, setWidgets] = useState<Widget[]>([
     { id: 'about', component: AboutWidget },
     { id: 'music', component: MusicWidget },
@@ -75,6 +78,16 @@ function App() {
     setIsDarkMode(!isDarkMode);
   };
 
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(emailAddress);
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy email:', err);
+    }
+  };
+
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
     setWidgets((prevWidgets) => {
       const newWidgets = [...prevWidgets];
@@ -96,13 +109,20 @@ function App() {
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 {/* Email Button */}
-                <a
-                  href="mailto:jeremy.shapero@gmail.com"
-                  className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-                  aria-label="Send email"
-                >
-                  <Mail className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                </a>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={copyEmail}
+                      className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+                      aria-label="Copy email"
+                    >
+                      <Mail className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {emailCopied ? 'Copied!' : emailAddress}
+                  </TooltipContent>
+                </Tooltip>
                 
                 {/* LinkedIn Button */}
                 <a
