@@ -98,41 +98,20 @@ The Music Widget can display your real listening data from Spotify, including re
 
 The Biking Widget can display your real bike ride data from Strava.
 
-### Setup Steps
+### Quick Setup
 
-1. **Create a Strava Application**
-   - Go to https://www.strava.com/settings/api
-   - Log in with your Strava account
-   - Click "Create App"
-   - Fill in:
-     - **Application Name**: Personal Website
-     - **Category**: Website
-     - **Club**: (optional)
-     - **Website**: Your website URL
-     - **Application Description**: Personal website biking widget
-     - **Authorization Callback Domain**: `localhost` (for local dev)
-   - Click "Create"
-   - Accept the API Agreement
+1. **Create a Strava Application** at https://www.strava.com/settings/api
+2. **Get your Client ID and Client Secret**
+3. **Authorize and get tokens** (access token + refresh token)
+4. **Add to Vercel Environment Variables**:
+   - `STRAVA_CLIENT_ID`
+   - `STRAVA_CLIENT_SECRET`
+   - `STRAVA_REFRESH_TOKEN`
+   - OR just `STRAVA_ACCESS_TOKEN` (but it expires every 6 hours)
 
-2. **Get Credentials**
-   - You'll see your **Client ID** and **Client Secret**
-   - Save these
+**📖 For detailed step-by-step instructions, see [STRAVA_SETUP.md](./STRAVA_SETUP.md)**
 
-3. **Get Access Token**
-   - Visit: https://www.strava.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://localhost&approval_prompt=force&scope=activity:read_all
-   - Replace `YOUR_CLIENT_ID` with your actual Client ID
-   - Authorize the application
-   - You'll be redirected to a URL with a `code` parameter
-   - Copy that code
-   - Use the Strava OAuth token exchange endpoint to get an access token
-   - Or use a tool like Postman to exchange the code for a token
-
-4. **Add to Environment Variables**
-   - In Vercel: Settings → Environment Variables
-   - Add:
-     - `STRAVA_ACCESS_TOKEN`: Your access token
-
-**Note**: Strava access tokens expire. You may need to refresh them periodically or implement token refresh logic.
+**Note**: The API supports automatic token refresh if you provide `STRAVA_REFRESH_TOKEN`. Otherwise, access tokens expire after 6 hours.
 
 ---
 

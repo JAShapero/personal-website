@@ -8,6 +8,9 @@
     },
     "api/spotify.ts": {
       "maxDuration": 10
+    },
+    "api/strava.ts": {
+      "maxDuration": 10
     }
   }
 }

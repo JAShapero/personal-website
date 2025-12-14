@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Bike, TrendingUp, Mountain as MountainIcon, Clock } from 'lucide-react';
+import { Bike, TrendingUp, Mountain as MountainIcon, Clock, Loader2 } from 'lucide-react';
 
 interface BikeWidgetProps {
   isActive: boolean;
   onClick: () => void;
 }
 
-// Mock Strava data - Replace with real API call
-// To integrate with Strava API:
-// 1. Get your API credentials from https://www.strava.com/settings/api
-// 2. Use OAuth to authenticate
-// 3. Fetch latest activity: GET https://www.strava.com/api/v3/athlete/activities
 interface StravaActivity {
   distance: number; // in meters
   elevation_gain: number; // in meters
   moving_time: number; // in seconds
+  elapsed_time?: number; // in seconds
   name: string;
-  route_polyline: string; // encoded polyline
+  route_polyline: string | null; // encoded polyline
+  start_date?: string;
+  start_date_local?: string;
 }
 
 const mockStravaData: StravaActivity = {
@@ -25,7 +23,7 @@ const mockStravaData: StravaActivity = {
   elevation_gain: 523, // meters = 1716 feet
   moving_time: 7245, // 2 hours 45 seconds
   name: "Morning Highline Canal Ride",
-  route_polyline: "mockPolyline" // In real app, decode this to draw route
+  route_polyline: null // In real app, decode this to draw route
 };
 
 function formatDuration(seconds: number): string {
@@ -49,28 +47,94 @@ function formatElevation(meters: number): string {
 
 export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
   const [activity, setActivity] = useState<StravaActivity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   useEffect(() => {
-    // TODO: Replace with actual Strava API call
-    // Example:
-    // const fetchStravaData = async () => {
-    //   const response = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=1', {
-    //     headers: { 'Authorization': `Bearer ${YOUR_ACCESS_TOKEN}` }
-    //   });
-    //   const data = await response.json();
-    //   setActivity(data[0]);
-    // };
-    // fetchStravaData();
-    
-    // For now, using mock data
-    setActivity(mockStravaData);
+    fetchStravaData();
   }, []);
+
+  const fetchStravaData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/strava?type=latest&per_page=10');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // If Strava is not configured, use mock data
+        if (response.status === 401 || response.status === 500 || response.status === 404) {
+          setActivity(mockStravaData);
+          setIsUsingMockData(true);
+          setLoading(false);
+          return;
+        }
+        throw new Error(errorData.message || 'Failed to fetch ride data');
+      }
+
+      const data = await response.json();
+      setActivity(data.activity);
+      setIsUsingMockData(false);
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error fetching Strava data:', err);
+      setError('Failed to load ride data');
+      // Fallback to mock data on error
+      setActivity(mockStravaData);
+      setIsUsingMockData(true);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <motion.div
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        onClick={onClick}
+        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
+          isActive 
+            ? 'border-green-500 shadow-md' 
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
+        }`}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
+            <Bike className="w-5 h-5 text-green-600 dark:text-green-400" />
+          </div>
+          <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
+        </div>
+        <div className="flex items-center justify-center h-[200px]">
+          <Loader2 className="w-6 h-6 text-green-600 dark:text-green-400 animate-spin" />
+        </div>
+      </motion.div>
+    );
+  }
 
   if (!activity) {
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 h-full flex flex-col items-center justify-center">
-        <p className="text-gray-400 dark:text-gray-500">Loading ride data...</p>
-      </div>
+      <motion.div
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        onClick={onClick}
+        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
+          isActive 
+            ? 'border-green-500 shadow-md' 
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
+        }`}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
+            <Bike className="w-5 h-5 text-green-600 dark:text-green-400" />
+          </div>
+          <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
+        </div>
+        <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
+          {error || 'No ride data available'}
+        </div>
+      </motion.div>
     );
   }
 
@@ -151,10 +215,12 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         </div>
       </div>
 
-      {/* API Integration Note */}
-      <div className="mt-auto text-xs text-gray-500 dark:text-gray-400 text-center">
-        Connect to Strava API for live data
-      </div>
+      {/* API Integration Note - only show if using mock data */}
+      {isUsingMockData && (
+        <div className="mt-auto text-xs text-gray-500 dark:text-gray-400 text-center">
+          Connect to Strava API for live data
+        </div>
+      )}
     </motion.div>
   );
 }
