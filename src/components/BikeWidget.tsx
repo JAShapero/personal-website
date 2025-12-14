@@ -325,18 +325,18 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         onClick={onClick}
         className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
           isActive 
-            ? 'border-green-500 shadow-md' 
+            ? 'border-orange-500 shadow-md' 
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
         }`}
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
-            <Bike className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+            <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
           </div>
           <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
         </div>
         <div className="flex items-center justify-center h-[200px]">
-          <Loader2 className="w-6 h-6 text-green-600 dark:text-green-400 animate-spin" />
+          <Loader2 className="w-6 h-6 text-orange-600 dark:text-orange-400 animate-spin" />
         </div>
       </motion.div>
     );
@@ -350,13 +350,13 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         onClick={onClick}
         className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
           isActive 
-            ? 'border-green-500 shadow-md' 
+            ? 'border-orange-500 shadow-md' 
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
         }`}
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
-            <Bike className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+            <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
           </div>
           <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
         </div>
@@ -374,13 +374,13 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       onClick={onClick}
       className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
         isActive 
-          ? 'border-green-500 shadow-md' 
+          ? 'border-orange-500 shadow-md' 
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
       }`}
     >
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
-          <Bike className="w-5 h-5 text-green-600 dark:text-green-400" />
+        <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+          <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
         </div>
         <div className="flex-1">
           <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
@@ -406,7 +406,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       <div className="grid grid-cols-3 gap-3 flex-1">
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
           <div className="flex items-center gap-1 mb-1">
-            <TrendingUp className="w-3 h-3 text-green-600 dark:text-green-400" />
+            <TrendingUp className="w-3 h-3 text-orange-600 dark:text-orange-400" />
             <span className="text-xs text-gray-500 dark:text-gray-400">Distance</span>
           </div>
           <p className="text-gray-900 dark:text-gray-100">{formatDistance(activity.distance)}</p>
@@ -414,7 +414,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
           <div className="flex items-center gap-1 mb-1">
-            <MountainIcon className="w-3 h-3 text-green-600 dark:text-green-400" />
+            <MountainIcon className="w-3 h-3 text-orange-600 dark:text-orange-400" />
             <span className="text-xs text-gray-500 dark:text-gray-400">Elevation</span>
           </div>
           <p className="text-gray-900 dark:text-gray-100">{formatElevation(activity.elevation_gain)}</p>
@@ -422,7 +422,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
           <div className="flex items-center gap-1 mb-1">
-            <Clock className="w-3 h-3 text-green-600 dark:text-green-400" />
+            <Clock className="w-3 h-3 text-orange-600 dark:text-orange-400" />
             <span className="text-xs text-gray-500 dark:text-gray-400">Duration</span>
           </div>
           <p className="text-gray-900 dark:text-gray-100">{formatDuration(activity.moving_time)}</p>

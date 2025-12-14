@@ -74,13 +74,13 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
       onClick={onClick}
       className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border flex flex-col h-full ${
         isActive 
-          ? 'border-orange-500 shadow-md' 
+          ? 'border-green-500 shadow-md' 
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
       } ${className}`}
     >
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
-          <BookOpen className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+        <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
+          <BookOpen className="w-5 h-5 text-green-600 dark:text-green-400" />
         </div>
         <h3 className="text-gray-900 dark:text-gray-100">Currently Reading</h3>
       </div>
@@ -109,7 +109,7 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
                     initial={{ width: 0 }}
                     animate={{ width: `${book.progress}%` }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full bg-orange-500"
+                    className="h-full bg-green-500"
                   />
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
