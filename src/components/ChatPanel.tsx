@@ -17,7 +17,7 @@ interface Message {
 
 const widgetContexts = {
   about: {
-    greeting: "Hi! I'm here to tell you more about me. What would you like to know?",
+    greeting: "AMA",
     responses: [
       "I'm a full-stack developer with 5+ years of experience, specializing in React and Node.js.",
       "I'm based in Colorado, which gives me easy access to amazing outdoor activities!",
