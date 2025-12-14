@@ -53,12 +53,22 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
     setError(null);
 
     try {
+      console.log('Fetching books from /api/hardcover...');
       const response = await fetch('/api/hardcover');
+      
+      console.log('Response status:', response.status, response.statusText);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // If Hardcover is not configured, use mock data
-        if (response.status === 401 || response.status === 500) {
+        console.log('Error response data:', errorData);
+        
+        // If Hardcover is not configured, endpoint doesn't exist (404), or server error, use mock data
+        if (response.status === 401 || response.status === 500 || response.status === 404) {
+          if (response.status === 404) {
+            console.warn('API endpoint not found (404). If running locally, use "vercel dev" to test API endpoints.');
+          } else {
+            console.warn('Hardcover API not configured or error occurred, using mock data');
+          }
           setBooks(mockBooksData);
           setLoading(false);
           return;
@@ -67,12 +77,22 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
       }
 
       const data = await response.json();
-      setBooks(data.books || []);
+      console.log('Hardcover API response:', data);
+      
+      if (data.books && data.books.length > 0) {
+        console.log(`Loaded ${data.books.length} book(s) from Hardcover`);
+        setBooks(data.books);
+      } else {
+        console.log('No books found in response, using mock data');
+        setBooks(mockBooksData);
+      }
       setLoading(false);
     } catch (err: any) {
       console.error('Error fetching Hardcover data:', err);
+      console.error('Error details:', err.message, err.stack);
       setError('Failed to load books data');
       // Fallback to mock data on error
+      console.warn('Falling back to mock data due to error');
       setBooks(mockBooksData);
       setLoading(false);
     }
