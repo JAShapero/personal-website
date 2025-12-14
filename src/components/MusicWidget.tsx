@@ -116,7 +116,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          Recently Played
+          Recently played
         </button>
         <button
           onClick={(e) => handleToggle(e, 'lifetime')}
@@ -126,7 +126,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          Top Artists P365
+          Top artists P365
         </button>
       </div>
 

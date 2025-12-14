@@ -54,7 +54,7 @@ export function AboutSiteWidget({ isActive, onClick, className = '' }: AboutSite
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          What's Next
+          What's next
         </button>
       </div>
 
@@ -69,8 +69,9 @@ export function AboutSiteWidget({ isActive, onClick, className = '' }: AboutSite
         ) : (
           <div className="space-y-3">
             <ol className="space-y-2 pl-5" style={{ listStyleType: 'decimal', listStylePosition: 'outside' }}>
-              <li>Improve agent quality and vibe (hanging responses, error states, personality)</li>
-              <li>Show LLM work mode (show tools used, reasoning, etc.)</li>
+              <li>Planning agent and automatic tool routing</li>
+              <li>Retry logic</li>
+              <li>Improve response format, quality and vibe</li>
               <li>Mobile responsiveness 😅</li>
             </ol>
           </div>
