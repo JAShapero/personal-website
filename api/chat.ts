@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { retryWithBackoff } from './retry';
 
 // Read data files
 function readDataFile(filename: string): string {
@@ -342,18 +343,33 @@ Use these tools to answer questions accurately. Be friendly, conversational, and
 
 If a tool call fails or data isn't available, gracefully explain that the information isn't currently available.`;
 
-    // Call Claude API
+    // Call Claude API with retry logic
     let response;
     try {
-      response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: allMessages.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        })),
-        tools,
+      response = await retryWithBackoff(async () => {
+        return await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: allMessages.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+          })),
+          tools,
+        });
+      }, {
+        maxRetries: 3,
+        shouldRetry: (error: any) => {
+          // Don't retry on authentication errors
+          if (error.status === 401 || error.status === 403) {
+            return false;
+          }
+          // Retry on rate limits and server errors
+          return error.status === 529 || 
+                 error.status >= 500 || 
+                 error.message?.includes('overloaded') || 
+                 error.message?.includes('Overloaded');
+        },
       });
     } catch (apiError: any) {
       // Handle Anthropic API errors
@@ -879,29 +895,44 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       // Make a follow-up call with tool results
       let followUpResponse;
       try {
-        followUpResponse = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1024,
-          system: systemPrompt,
-          messages: [
-            ...allMessages.map(msg => ({
-              role: msg.role as 'user' | 'assistant',
-              content: msg.content,
-            })),
-            {
-              role: 'assistant',
-              content: response.content,
-            },
-            {
-              role: 'user',
-              content: toolResults.map(tr => ({
-                type: 'tool_result' as const,
-                tool_use_id: tr.tool_use_id,
-                content: tr.content,
-                is_error: false,
+        followUpResponse = await retryWithBackoff(async () => {
+          return await anthropic.messages.create({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [
+              ...allMessages.map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content,
               })),
-            },
-          ] as any,
+              {
+                role: 'assistant',
+                content: response.content,
+              },
+              {
+                role: 'user',
+                content: toolResults.map(tr => ({
+                  type: 'tool_result' as const,
+                  tool_use_id: tr.tool_use_id,
+                  content: tr.content,
+                  is_error: false,
+                })),
+              },
+            ] as any,
+          });
+        }, {
+          maxRetries: 3,
+          shouldRetry: (error: any) => {
+            // Don't retry on authentication errors
+            if (error.status === 401 || error.status === 403) {
+              return false;
+            }
+            // Retry on rate limits and server errors
+            return error.status === 529 || 
+                   error.status >= 500 || 
+                   error.message?.includes('overloaded') || 
+                   error.message?.includes('Overloaded');
+          },
         });
       } catch (apiError: any) {
         // Handle Anthropic API errors
