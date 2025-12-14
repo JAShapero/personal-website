@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
-import { Bike, TrendingUp, Mountain as MountainIcon, Clock, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Bike, TrendingUp, Mountain as MountainIcon, Clock, Loader2, X } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -102,7 +102,15 @@ function decodePolyline(encoded: string): Array<[number, number]> {
 }
 
 // RouteMap component using Leaflet
-function RouteMap({ polyline }: { polyline: string | null }) {
+function RouteMap({ 
+  polyline, 
+  interactive = false,
+  onClick 
+}: { 
+  polyline: string | null;
+  interactive?: boolean;
+  onClick?: () => void;
+}) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
@@ -113,69 +121,68 @@ function RouteMap({ polyline }: { polyline: string | null }) {
     if (!mapContainerRef.current || !polyline) return;
 
     // Initialize map
-    if (!mapRef.current) {
-      const coordinates = decodePolyline(polyline);
-      if (coordinates.length === 0) return;
+    const coordinates = decodePolyline(polyline);
+    if (coordinates.length === 0) return;
 
-      // Calculate bounds
-      const latlngs = coordinates.map(([lat, lng]) => [lat, lng] as [number, number]);
-      const bounds = L.latLngBounds(latlngs);
+    // Calculate bounds
+    const latlngs = coordinates.map(([lat, lng]) => [lat, lng] as [number, number]);
+    const bounds = L.latLngBounds(latlngs);
 
-      // Create map
-      const map = L.map(mapContainerRef.current, {
-        zoomControl: false,
-        attributionControl: false,
-        dragging: false,
-        touchZoom: false,
-        doubleClickZoom: false,
-        scrollWheelZoom: false,
-        boxZoom: false,
-        keyboard: false,
-      });
+    // Create map with interactive settings
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: interactive,
+      attributionControl: interactive,
+      dragging: interactive,
+      touchZoom: interactive,
+      doubleClickZoom: interactive,
+      scrollWheelZoom: interactive,
+      boxZoom: interactive,
+      keyboard: interactive,
+    });
 
-      // Add OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-      }).addTo(map);
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: interactive ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' : '',
+    }).addTo(map);
 
-      // Fit map to route bounds with padding
-      map.fitBounds(bounds, { padding: [10, 10] });
+    // Fit map to route bounds with padding
+    map.fitBounds(bounds, { padding: interactive ? [20, 20] : [10, 10] });
 
-      // Add route polyline
-      const routePolyline = L.polyline(latlngs, {
-        color: '#10b981',
-        weight: 4,
-        opacity: 0.9,
-        lineJoin: 'round',
-        lineCap: 'round',
-      }).addTo(map);
+    // Add route polyline
+    const routePolyline = L.polyline(latlngs, {
+      color: '#10b981',
+      weight: interactive ? 5 : 4,
+      opacity: 0.9,
+      lineJoin: 'round',
+      lineCap: 'round',
+    }).addTo(map);
 
-      // Add start marker
-      const startIcon = L.divIcon({
-        className: 'custom-marker',
-        html: '<div style="background-color: #10b981; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
-      });
-      const startMarker = L.marker([coordinates[0][0], coordinates[0][1]], { icon: startIcon }).addTo(map);
+    // Add start marker
+    const startIcon = L.divIcon({
+      className: 'custom-marker',
+      html: '<div style="background-color: #10b981; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    });
+    const startMarker = L.marker([coordinates[0][0], coordinates[0][1]], { icon: startIcon }).addTo(map);
 
-      // Add end marker
-      const endIcon = L.divIcon({
-        className: 'custom-marker',
-        html: '<div style="background-color: #059669; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
-      });
-      const endMarker = L.marker(
-        [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
-        { icon: endIcon }
-      ).addTo(map);
+    // Add end marker
+    const endIcon = L.divIcon({
+      className: 'custom-marker',
+      html: '<div style="background-color: #059669; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    });
+    const endMarker = L.marker(
+      [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
+      { icon: endIcon }
+    ).addTo(map);
 
-      mapRef.current = map;
-      polylineRef.current = routePolyline;
-      startMarkerRef.current = startMarker;
-      endMarkerRef.current = endMarker;
-    }
+    mapRef.current = map;
+    polylineRef.current = routePolyline;
+    startMarkerRef.current = startMarker;
+    endMarkerRef.current = endMarker;
 
     // Cleanup
     return () => {
@@ -187,9 +194,19 @@ function RouteMap({ polyline }: { polyline: string | null }) {
         endMarkerRef.current = null;
       }
     };
-  }, [polyline]);
+  }, [polyline, interactive]);
 
-  return <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: '128px' }} />;
+  return (
+    <div 
+      ref={mapContainerRef} 
+      className="w-full h-full" 
+      onClick={!interactive && onClick ? onClick : undefined}
+      style={{ 
+        minHeight: interactive ? '600px' : '128px',
+        cursor: !interactive && onClick ? 'pointer' : 'default'
+      }}
+    />
+  );
 }
 
 function formatActivityDisplay(activity: StravaActivity): string {
@@ -231,6 +248,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   useEffect(() => {
     fetchStravaData();
@@ -343,7 +361,10 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       {/* Route Map */}
       <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 h-32 relative">
         {activity.route_polyline ? (
-          <RouteMap polyline={activity.route_polyline} />
+          <RouteMap 
+            polyline={activity.route_polyline} 
+            onClick={() => setIsMapModalOpen(true)}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
             No route data available
@@ -384,6 +405,41 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           Connect to Strava API for live data
         </div>
       )}
+
+      {/* Map Lightbox Modal */}
+      <AnimatePresence>
+        {isMapModalOpen && activity.route_polyline && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMapModalOpen(false)}
+            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+            style={{ margin: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-6xl h-[90vh] bg-white dark:bg-gray-800 rounded-lg overflow-hidden"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setIsMapModalOpen(false)}
+                className="absolute top-4 right-4 z-[1000] p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors shadow-lg"
+                aria-label="Close map"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {/* Interactive Map */}
+              <RouteMap polyline={activity.route_polyline} interactive={true} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
