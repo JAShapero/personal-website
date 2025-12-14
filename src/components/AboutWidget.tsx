@@ -93,7 +93,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-4xl max-h-[85vh] w-full flex items-center justify-center"
+              className="relative max-w-4xl max-h-[40vh] w-full flex items-center justify-center"
             >
               {/* Close Button */}
               <button
@@ -108,7 +108,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
               <img
                 src={selectedPhoto.url}
                 alt={selectedPhoto.caption}
-                className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg"
+                className="max-w-full max-h-[40vh] w-auto h-auto object-contain rounded-lg"
               />
             </motion.div>
           </motion.div>
