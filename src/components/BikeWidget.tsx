@@ -150,35 +150,35 @@ function RouteMap({
     // Fit map to route bounds with padding
     map.fitBounds(bounds, { padding: interactive ? [20, 20] : [10, 10] });
 
-    // Add route polyline
-    const routePolyline = L.polyline(latlngs, {
-      color: '#10b981',
-      weight: interactive ? 5 : 4,
-      opacity: 0.9,
-      lineJoin: 'round',
-      lineCap: 'round',
-    }).addTo(map);
+      // Add route polyline - using orange color to stand out against green map layers
+      const routePolyline = L.polyline(latlngs, {
+        color: '#f97316', // orange-500
+        weight: interactive ? 5 : 4,
+        opacity: 0.9,
+        lineJoin: 'round',
+        lineCap: 'round',
+      }).addTo(map);
 
-    // Add start marker
-    const startIcon = L.divIcon({
-      className: 'custom-marker',
-      html: '<div style="background-color: #10b981; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
-    });
-    const startMarker = L.marker([coordinates[0][0], coordinates[0][1]], { icon: startIcon }).addTo(map);
+      // Add start marker - using orange to match route color
+      const startIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background-color: #f97316; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+      const startMarker = L.marker([coordinates[0][0], coordinates[0][1]], { icon: startIcon }).addTo(map);
 
-    // Add end marker
-    const endIcon = L.divIcon({
-      className: 'custom-marker',
-      html: '<div style="background-color: #059669; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
-    });
-    const endMarker = L.marker(
-      [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
-      { icon: endIcon }
-    ).addTo(map);
+      // Add end marker - using darker orange to match route color
+      const endIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background-color: #ea580c; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+      const endMarker = L.marker(
+        [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
+        { icon: endIcon }
+      ).addTo(map);
 
     mapRef.current = map;
     polylineRef.current = routePolyline;
@@ -258,19 +258,30 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
     fetchStravaData();
   }, []);
 
-  // Add/remove body class when modal is open
+  // Add/remove body class when modal is open and handle escape key
   useEffect(() => {
     if (isMapModalOpen) {
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'relative';
+      
+      // Handle escape key to close modal
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setIsMapModalOpen(false);
+        }
+      };
+      
+      window.addEventListener('keydown', handleEscape);
+      
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        window.removeEventListener('keydown', handleEscape);
+      };
     } else {
       document.body.style.overflow = '';
       document.body.style.position = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-    };
   }, [isMapModalOpen]);
 
   const fetchStravaData = async () => {
