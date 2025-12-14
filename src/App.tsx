@@ -7,11 +7,10 @@ import { MusicWidget } from './components/MusicWidget';
 import { SnowboardingWidget } from './components/SnowboardingWidget';
 import { BikeWidget } from './components/BikeWidget';
 import { BooksWidget } from './components/BooksWidget';
-import { PhotosWidget } from './components/PhotosWidget';
 import { ChatPanel } from './components/ChatPanel';
 import { DraggableWidget } from './components/DraggableWidget';
 
-export type WidgetType = 'about' | 'music' | 'snowboarding' | 'biking' | 'books' | 'photos' | null;
+export type WidgetType = 'about' | 'music' | 'snowboarding' | 'biking' | 'books' | null;
 
 interface Widget {
   id: WidgetType;
@@ -29,8 +28,7 @@ function App() {
     { id: 'music', component: MusicWidget },
     { id: 'snowboarding', component: SnowboardingWidget },
     { id: 'biking', component: BikeWidget },
-    { id: 'books', component: BooksWidget, className: 'md:col-span-2' },
-    { id: 'photos', component: PhotosWidget, className: 'md:col-span-2' }
+    { id: 'books', component: BooksWidget, className: 'md:col-span-2' }
   ]);
 
   // Load theme preference from localStorage
