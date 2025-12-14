@@ -106,7 +106,7 @@ function App() {
                 
                 {/* LinkedIn Button */}
                 <a
-                  href="https://www.linkedin.com/in/jeremyshapero"
+                  href="https://www.linkedin.com/in/jshapero/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
