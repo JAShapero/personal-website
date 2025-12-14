@@ -17,6 +17,15 @@ interface TopTracksResponse {
   items: SpotifyTrack[];
 }
 
+interface SpotifyArtist {
+  name: string;
+  images?: Array<{ url: string }>;
+}
+
+interface TopArtistsResponse {
+  items: SpotifyArtist[];
+}
+
 interface RecentlyPlayedResponse {
   items: RecentlyPlayedItem[];
 }
@@ -117,6 +126,27 @@ async function fetchTopTracks(accessToken: string, timeRange: 'short_term' | 'me
   return response.json();
 }
 
+// Fetch top artists from Spotify
+async function fetchTopArtists(accessToken: string, timeRange: 'short_term' | 'medium_term' | 'long_term' = 'long_term', limit: number = 15): Promise<TopArtistsResponse> {
+  const response = await fetch(
+    `https://api.spotify.com/v1/me/top/artists?time_range=${timeRange}&limit=${limit}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('UNAUTHORIZED');
+    }
+    throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -187,8 +217,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           albumArt: track.album?.images?.[0]?.url,
         })),
       };
+    } else if (type === 'artists') {
+      const topArtistsData = await fetchTopArtists(
+        accessToken,
+        time_range as 'short_term' | 'medium_term' | 'long_term',
+        parseInt(limit as string)
+      );
+      console.log('Spotify Top Artists API Response:', JSON.stringify(topArtistsData, null, 2));
+      data = {
+        tracks: topArtistsData.items.map((artist, index) => ({
+          title: artist.name,
+          artist: '', // Artists don't have an artist field
+          rank: index + 1,
+          albumArt: artist.images?.[0]?.url,
+        })),
+      };
     } else {
-      return res.status(400).json({ error: 'Invalid type. Use "recent" or "top"' });
+      return res.status(400).json({ error: 'Invalid type. Use "recent", "top", or "artists"' });
     }
 
     return res.status(200).json(data);

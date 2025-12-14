@@ -52,24 +52,24 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
       // Limit to 10 unique tracks after duplicates are removed
       setRecentTracks((recentData.tracks || []).slice(0, 10));
 
-      // Fetch top tracks (all time - using long_term time range)
+      // Fetch top artists (all time - using long_term time range)
       // Note: Spotify's long_term is calculated from several years, not true all-time
-      const topResponse = await fetch('/api/spotify?type=top&limit=50&time_range=long_term');
+      const topArtistsResponse = await fetch('/api/spotify?type=artists&limit=50&time_range=long_term');
       
-      if (!topResponse.ok) {
-        const errorData = await topResponse.json().catch(() => ({}));
-        // If we got recent tracks but top tracks failed, just use empty array
-        if (topResponse.status === 401 || topResponse.status === 500) {
+      if (!topArtistsResponse.ok) {
+        const errorData = await topArtistsResponse.json().catch(() => ({}));
+        // If we got recent tracks but top artists failed, just use empty array
+        if (topArtistsResponse.status === 401 || topArtistsResponse.status === 500) {
           setTopTracks(mockTopTracks);
           setLoading(false);
           return;
         }
-        throw new Error(errorData.message || 'Failed to fetch top tracks');
+        throw new Error(errorData.message || 'Failed to fetch top artists');
       }
 
-      const topData = await topResponse.json();
-      console.log('Spotify Top Tracks Response:', topData);
-      setTopTracks(topData.tracks || []);
+      const topArtistsData = await topArtistsResponse.json();
+      console.log('Spotify Top Artists Response:', topArtistsData);
+      setTopTracks(topArtistsData.tracks || []);
       setLoading(false);
     } catch (err: any) {
       console.error('Error fetching Spotify data:', err);
@@ -126,7 +126,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          Top Tracks P365
+          Top Artists P365
         </button>
       </div>
 
@@ -147,9 +147,11 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
                 <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
                   {track.title}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {track.artist}
-                </p>
+                {view === 'recent' && track.artist && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {track.artist}
+                  </p>
+                )}
               </div>
               {view === 'lifetime' && (track.rank || track.plays) && (
                 <span className="text-xs text-purple-600 dark:text-purple-400 flex-shrink-0">
