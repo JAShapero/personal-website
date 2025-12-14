@@ -26,10 +26,10 @@ function App() {
   const headerRef = useRef<HTMLElement>(null);
   const [widgets, setWidgets] = useState<Widget[]>([
     { id: 'about', component: AboutWidget },
-    { id: 'music', component: MusicWidget },
-    { id: 'snowboarding', component: SnowboardingWidget },
-    { id: 'biking', component: BikeWidget },
     { id: 'site', component: AboutSiteWidget },
+    { id: 'music', component: MusicWidget },
+    { id: 'biking', component: BikeWidget },
+    { id: 'snowboarding', component: SnowboardingWidget },
     // { id: 'books', component: BooksWidget, className: 'md:col-span-2' } // Hidden for now
   ]);
 

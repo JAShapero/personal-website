@@ -333,7 +333,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
             <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
+          <h3 className="text-gray-900 dark:text-gray-100">Last ride</h3>
         </div>
         <div className="flex items-center justify-center h-[200px]">
           <Loader2 className="w-6 h-6 text-orange-600 dark:text-orange-400 animate-spin" />
@@ -358,7 +358,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
             <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
+          <h3 className="text-gray-900 dark:text-gray-100">Last ride</h3>
         </div>
         <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
           {error || 'No ride data available'}
@@ -383,7 +383,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
+          <h3 className="text-gray-900 dark:text-gray-100">Last ride</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">{formatActivityDisplay(activity)}</p>
         </div>
       </div>

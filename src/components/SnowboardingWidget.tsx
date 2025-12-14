@@ -123,6 +123,7 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
   const [error, setError] = useState<string | null>(null);
   const [currentSeason, setCurrentSeason] = useState<string>('');
   const [totalDays, setTotalDays] = useState(0);
+  const [chartKey, setChartKey] = useState(0);
 
   useEffect(() => {
     const loadSnowboardingData = async () => {
@@ -308,6 +309,19 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
     loadSnowboardingData();
   }, []);
 
+  // Force ResponsiveContainer to remount after data loads to ensure proper sizing
+  useEffect(() => {
+    if (!loading && chartData.length > 0) {
+      // Delay to ensure DOM is ready, then remount the chart
+      const timer = setTimeout(() => {
+        setChartKey(prev => prev + 1);
+        window.dispatchEvent(new Event('resize'));
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, chartData.length]);
+
+
   const getSeasonLabel = (season: string) => {
     // Convert "2024-25" to "'24-'25" format
     const match = season.match(/(\d{4})-(\d{2})/);
@@ -391,8 +405,8 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         <h3 className="text-gray-900 dark:text-gray-100">Snowboarding</h3>
       </div>
       
-      <div className="h-[200px] flex-1">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[200px] w-full">
+        <ResponsiveContainer width="100%" height="100%" key={chartKey}>
           <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" opacity={0.5} />
             <XAxis 

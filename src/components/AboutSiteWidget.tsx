@@ -31,7 +31,7 @@ export function AboutSiteWidget({ isActive, onClick, className = '' }: AboutSite
         <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
           <Code className="w-5 h-5 text-green-600 dark:text-green-400" />
         </div>
-        <h3 className="text-gray-900 dark:text-gray-100 flex-1">About This Site</h3>
+        <h3 className="text-gray-900 dark:text-gray-100 flex-1">About this site</h3>
       </div>
 
       {/* Toggle */}

@@ -68,7 +68,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
           <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
             <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <h3 className="text-gray-900 dark:text-gray-100">About Me</h3>
+          <h3 className="text-gray-900 dark:text-gray-100">About me</h3>
         </div>
         <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed space-y-2 mb-4 flex-1">
           <p>Hey, I'm Jeremy 👋</p>
