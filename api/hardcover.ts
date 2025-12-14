@@ -15,20 +15,9 @@ interface HardcoverBook {
   pages?: number;
 }
 
-interface HardcoverReading {
+interface HardcoverUserBook {
   book: HardcoverBook;
   progress_pages?: number;
-}
-
-interface HardcoverMe {
-  currently_reading: HardcoverReading[];
-}
-
-interface HardcoverGraphQLResponse {
-  data?: {
-    me?: HardcoverMe;
-  };
-  errors?: Array<{ message: string }>;
 }
 
 // Get Hardcover API token from environment variable
@@ -37,23 +26,65 @@ function getHardcoverToken(): string | null {
 }
 
 // Fetch currently reading books from Hardcover using GraphQL
-async function fetchCurrentlyReading(apiToken: string): Promise<HardcoverReading[]> {
-  const query = `
+async function fetchCurrentlyReading(apiToken: string): Promise<HardcoverUserBook[]> {
+  // First, get the user ID
+  const meQuery = `
     query {
       me {
-        currently_reading {
-          book {
-            title
-            contributions {
-              author {
-                name
-              }
+        id
+        username
+      }
+    }
+  `;
+
+  const meResponse = await fetch('https://api.hardcover.app/v1/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiToken}`,
+    },
+    body: JSON.stringify({ query: meQuery }),
+  });
+
+  if (!meResponse.ok) {
+    if (meResponse.status === 401) {
+      throw new Error('UNAUTHORIZED');
+    }
+    throw new Error(`Hardcover API error: ${meResponse.status} ${meResponse.statusText}`);
+  }
+
+  const meResult = await meResponse.json();
+  
+  if (meResult.errors && meResult.errors.length > 0) {
+    throw new Error(`GraphQL errors: ${meResult.errors.map((e: any) => e.message).join(', ')}`);
+  }
+
+  const userId = meResult.data?.me?.id;
+  if (!userId) {
+    throw new Error('Could not retrieve user ID from Hardcover API');
+  }
+
+  // Now query user_books with reading_status filter
+  const query = `
+    query {
+      user_books(
+        where: { 
+          user_id: { _eq: "${userId}" },
+          reading_status: { _eq: "reading" }
+        },
+        order_by: { updated_at: desc }
+      ) {
+        book {
+          title
+          contributions {
+            author {
+              name
             }
-            image
-            pages
           }
-          progress_pages
+          image
+          pages
         }
+        progress_pages
       }
     }
   `;
@@ -74,17 +105,23 @@ async function fetchCurrentlyReading(apiToken: string): Promise<HardcoverReading
     throw new Error(`Hardcover API error: ${response.status} ${response.statusText}`);
   }
 
-  const result: HardcoverGraphQLResponse = await response.json();
+  const result = await response.json();
 
   if (result.errors && result.errors.length > 0) {
-    throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(', ')}`);
+    console.error('Hardcover GraphQL errors:', JSON.stringify(result.errors, null, 2));
+    throw new Error(`GraphQL errors: ${result.errors.map((e: any) => e.message).join(', ')}`);
   }
 
-  if (!result.data || !result.data.me) {
+  if (!result.data || !result.data.user_books) {
+    console.error('Invalid Hardcover API response:', JSON.stringify(result, null, 2));
     throw new Error('Invalid response from Hardcover API');
   }
 
-  return result.data.me.currently_reading || [];
+  // Transform user_books to match our interface
+  return result.data.user_books.map((ub: any) => ({
+    book: ub.book,
+    progress_pages: ub.progress_pages,
+  }));
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
