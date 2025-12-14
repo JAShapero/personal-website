@@ -28,7 +28,7 @@ function App() {
     { id: 'music', component: MusicWidget },
     { id: 'snowboarding', component: SnowboardingWidget },
     { id: 'biking', component: BikeWidget },
-    { id: 'books', component: BooksWidget, className: 'md:col-span-2' }
+    // { id: 'books', component: BooksWidget, className: 'md:col-span-2' } // Hidden for now
   ]);
 
   // Load theme preference from localStorage
