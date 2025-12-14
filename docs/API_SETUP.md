@@ -38,7 +38,7 @@ The chat system requires Claude API to function. This is the only required API i
 
 ## Optional: Spotify API (Music Widget)
 
-The Music Widget can display your real listening data from Spotify.
+The Music Widget can display your real listening data from Spotify, including recently played tracks and your all-time top tracks.
 
 ### Setup Steps
 
@@ -49,7 +49,7 @@ The Music Widget can display your real listening data from Spotify.
    - Fill in:
      - **App name**: Personal Website
      - **App description**: Personal website music widget
-     - **Redirect URI**: `http://localhost:3000` (for local dev)
+     - **Redirect URI**: `http://127.0.0.1:3000` (for local dev - must use IP, not localhost)
      - Check "I understand and agree..."
    - Click "Save"
 
@@ -57,20 +57,40 @@ The Music Widget can display your real listening data from Spotify.
    - You'll see your **Client ID** and **Client Secret**
    - Save these for later
 
-3. **Get Access Token** (Simplified Approach)
-   - For personal use, you can get a long-lived access token:
+3. **Get Access Token** (Option 1 - Simple)
+   - For personal use, you can get an access token directly:
    - Go to: https://developer.spotify.com/console/get-current-user-recently-played/
    - Click "Get Token"
-   - Select scopes: `user-read-recently-played`, `user-top-read`
+   - Select scopes: `user-read-recently-played`, `user-top-read`, `user-read-currently-playing`
    - Click "Request Token"
    - Copy the access token
+   - **Note**: This token expires after 1 hour. For a permanent solution, use Option 2.
 
-4. **Add to Environment Variables**
+4. **Get Refresh Token** (Option 2 - Recommended)
+   - For a long-term solution, set up OAuth to get a refresh token:
+   - Visit: `https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://127.0.0.1:3000&scope=user-read-recently-played%20user-top-read&show_dialog=true`
+   - Replace `YOUR_CLIENT_ID` with your actual Client ID
+   - Authorize the app and copy the `code` from the redirect URL
+   - Exchange the code for tokens using:
+     ```bash
+     curl -H "Authorization: Basic BASE64(CLIENT_ID:CLIENT_SECRET)" \
+          -d grant_type=authorization_code \
+          -d code=YOUR_CODE \
+          -d redirect_uri=http://127.0.0.1:3000 \
+          https://accounts.spotify.com/api/token
+     ```
+   - Save both the `access_token` and `refresh_token`
+
+5. **Add to Environment Variables**
    - In Vercel: Settings → Environment Variables
-   - Add:
-     - `SPOTIFY_ACCESS_TOKEN`: Your access token
+   - Add one of these options:
+     - **Option 1**: `SPOTIFY_ACCESS_TOKEN`: Your access token (expires after 1 hour)
+     - **Option 2** (Recommended): 
+       - `SPOTIFY_CLIENT_ID`: Your Client ID
+       - `SPOTIFY_CLIENT_SECRET`: Your Client Secret
+       - `SPOTIFY_REFRESH_TOKEN`: Your refresh token (for automatic token renewal)
 
-**Note**: For production, consider implementing OAuth flow for better security. For personal use, the access token method works fine.
+**Note**: The widget will automatically use mock data if Spotify is not configured. The chat system can also answer questions about your music listening habits when configured.
 
 ---
 

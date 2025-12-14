@@ -12,15 +12,9 @@ interface Track {
   artist: string;
   plays?: number;
   playedAt?: string;
+  rank?: number;
+  albumArt?: string;
 }
-
-// Spotify API Configuration
-// To use this widget with real Spotify data:
-// 1. Go to https://developer.spotify.com/dashboard
-// 2. Create a new app and get your Client ID and Client Secret
-// 3. Set up OAuth 2.0 with the following scopes: user-read-recently-played, user-top-read
-// 4. Replace YOUR_ACCESS_TOKEN_HERE with your actual access token
-const SPOTIFY_ACCESS_TOKEN = 'YOUR_ACCESS_TOKEN_HERE';
 
 export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
   const [view, setView] = useState<'recent' | 'lifetime'>('recent');
@@ -38,63 +32,42 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
     setError(null);
 
     try {
-      // In production, replace this with actual Spotify API calls
-      if (SPOTIFY_ACCESS_TOKEN === 'YOUR_ACCESS_TOKEN_HERE') {
-        // Use mock data when no token is configured
-        setTimeout(() => {
+      // Fetch recently played tracks from our API endpoint
+      const recentResponse = await fetch('/api/spotify?type=recent&limit=15');
+      
+      if (!recentResponse.ok) {
+        const errorData = await recentResponse.json().catch(() => ({}));
+        // If Spotify is not configured, use mock data
+        if (recentResponse.status === 401 || recentResponse.status === 500) {
           setRecentTracks(mockRecentTracks);
           setTopTracks(mockTopTracks);
           setLoading(false);
-        }, 500);
-        return;
-      }
-
-      // Fetch recently played tracks
-      const recentResponse = await fetch(
-        'https://api.spotify.com/v1/me/player/recently-played?limit=15',
-        {
-          headers: {
-            Authorization: `Bearer ${SPOTIFY_ACCESS_TOKEN}`,
-          },
+          return;
         }
-      );
-
-      if (!recentResponse.ok) {
-        throw new Error('Failed to fetch recent tracks');
+        throw new Error(errorData.message || 'Failed to fetch recent tracks');
       }
 
       const recentData = await recentResponse.json();
-      const formattedRecent = recentData.items.map((item: any) => ({
-        title: item.track.name,
-        artist: item.track.artists.map((a: any) => a.name).join(', '),
-        playedAt: item.played_at,
-      }));
+      setRecentTracks(recentData.tracks || []);
 
       // Fetch top tracks (all time - using long_term time range)
-      const topResponse = await fetch(
-        'https://api.spotify.com/v1/me/top/tracks?limit=15&time_range=long_term',
-        {
-          headers: {
-            Authorization: `Bearer ${SPOTIFY_ACCESS_TOKEN}`,
-          },
-        }
-      );
-
+      const topResponse = await fetch('/api/spotify?type=top&limit=15&time_range=long_term');
+      
       if (!topResponse.ok) {
-        throw new Error('Failed to fetch top tracks');
+        const errorData = await topResponse.json().catch(() => ({}));
+        // If we got recent tracks but top tracks failed, just use empty array
+        if (topResponse.status === 401 || topResponse.status === 500) {
+          setTopTracks(mockTopTracks);
+          setLoading(false);
+          return;
+        }
+        throw new Error(errorData.message || 'Failed to fetch top tracks');
       }
 
       const topData = await topResponse.json();
-      const formattedTop = topData.items.map((track: any, index: number) => ({
-        title: track.name,
-        artist: track.artists.map((a: any) => a.name).join(', '),
-        plays: topData.items.length - index, // Approximate play count based on ranking
-      }));
-
-      setRecentTracks(formattedRecent);
-      setTopTracks(formattedTop);
+      setTopTracks(topData.tracks || []);
       setLoading(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching Spotify data:', err);
       setError('Failed to load music data');
       // Fallback to mock data on error
@@ -174,9 +147,9 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
                   {track.artist}
                 </p>
               </div>
-              {view === 'lifetime' && track.plays && (
+              {view === 'lifetime' && (track.rank || track.plays) && (
                 <span className="text-xs text-purple-600 dark:text-purple-400 flex-shrink-0">
-                  #{index + 1}
+                  #{track.rank || index + 1}
                 </span>
               )}
             </div>

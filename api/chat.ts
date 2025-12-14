@@ -22,6 +22,43 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
+// Refresh Spotify access token using client credentials
+async function refreshSpotifyToken(): Promise<string | null> {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  try {
+    // If we have a refresh token, use it to get a new access token
+    if (refreshToken) {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.access_token;
+      }
+    }
+  } catch (error) {
+    console.error('Error refreshing Spotify token:', error);
+  }
+
+  return null;
+}
+
 interface ChatRequest {
   messages: Array<{
     role: 'user' | 'assistant';
@@ -415,11 +452,126 @@ If a tool call fails or data isn't available, gracefully explain that the inform
               break;
               
             case 'get_music_data':
-              // For now, return placeholder since we need Spotify API integration
-              toolResult = {
-                tool_use_id: toolCall.id,
-                content: 'Music listening data would come from Spotify API. Currently using mock data in the widget. To enable this, configure Spotify API credentials.',
-              };
+              try {
+                const { query } = toolCall.input;
+                const accessToken = process.env.SPOTIFY_ACCESS_TOKEN || 
+                  (process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET 
+                    ? await refreshSpotifyToken() 
+                    : null);
+
+                if (!accessToken) {
+                  toolResult = {
+                    tool_use_id: toolCall.id,
+                    content: 'Spotify API is not configured. Please set SPOTIFY_ACCESS_TOKEN or SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET in environment variables.',
+                  };
+                  break;
+                }
+
+                let result = '';
+
+                if (query === 'recent_tracks' || query === 'recently_played') {
+                  const response = await fetch(
+                    'https://api.spotify.com/v1/me/player/recently-played?limit=15',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Spotify API error: ${response.status}`);
+                  }
+
+                  const data = await response.json();
+                  result = 'Recently played tracks:\n';
+                  data.items.forEach((item: any, index: number) => {
+                    const track = item.track;
+                    const artists = track.artists.map((a: any) => a.name).join(', ');
+                    result += `${index + 1}. "${track.name}" by ${artists}\n`;
+                  });
+                } else if (query === 'top_tracks' || query === 'favorite_tracks') {
+                  const response = await fetch(
+                    'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=15',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Spotify API error: ${response.status}`);
+                  }
+
+                  const data = await response.json();
+                  result = 'Top tracks (all time):\n';
+                  data.items.forEach((track: any, index: number) => {
+                    const artists = track.artists.map((a: any) => a.name).join(', ');
+                    result += `${index + 1}. "${track.name}" by ${artists}\n`;
+                  });
+                } else if (query === 'favorite_artists' || query === 'top_artists') {
+                  const response = await fetch(
+                    'https://api.spotify.com/v1/me/top/artists?time_range=long_term&limit=10',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Spotify API error: ${response.status}`);
+                  }
+
+                  const data = await response.json();
+                  result = 'Top artists (all time):\n';
+                  data.items.forEach((artist: any, index: number) => {
+                    result += `${index + 1}. ${artist.name}\n`;
+                  });
+                } else {
+                  // Default: get both recent and top tracks
+                  const [recentResponse, topResponse] = await Promise.all([
+                    fetch('https://api.spotify.com/v1/me/player/recently-played?limit=5', {
+                      headers: { Authorization: `Bearer ${accessToken}` },
+                    }),
+                    fetch('https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5', {
+                      headers: { Authorization: `Bearer ${accessToken}` },
+                    }),
+                  ]);
+
+                  if (recentResponse.ok && topResponse.ok) {
+                    const recentData = await recentResponse.json();
+                    const topData = await topResponse.json();
+                    
+                    result = 'Recent listening activity:\n';
+                    result += 'Recently played:\n';
+                    recentData.items.slice(0, 3).forEach((item: any) => {
+                      const track = item.track;
+                      const artists = track.artists.map((a: any) => a.name).join(', ');
+                      result += `- "${track.name}" by ${artists}\n`;
+                    });
+                    
+                    result += '\nTop tracks:\n';
+                    topData.items.slice(0, 3).forEach((track: any, index: number) => {
+                      const artists = track.artists.map((a: any) => a.name).join(', ');
+                      result += `${index + 1}. "${track.name}" by ${artists}\n`;
+                    });
+                  } else {
+                    throw new Error('Failed to fetch music data');
+                  }
+                }
+
+                toolResult = {
+                  tool_use_id: toolCall.id,
+                  content: result || 'No music data available.',
+                };
+              } catch (error: any) {
+                toolResult = {
+                  tool_use_id: toolCall.id,
+                  content: `Error fetching music data: ${error.message}. Please ensure Spotify API is properly configured.`,
+                };
+              }
               break;
               
             default:

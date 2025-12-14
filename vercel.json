@@ -5,6 +5,9 @@
   "functions": {
     "api/chat.ts": {
       "maxDuration": 30
+    },
+    "api/spotify.ts": {
+      "maxDuration": 10
     }
   }
 }
