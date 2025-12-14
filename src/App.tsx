@@ -7,10 +7,11 @@ import { MusicWidget } from './components/MusicWidget';
 import { SnowboardingWidget } from './components/SnowboardingWidget';
 import { BikeWidget } from './components/BikeWidget';
 import { BooksWidget } from './components/BooksWidget';
+import { AboutSiteWidget } from './components/AboutSiteWidget';
 import { ChatPanel } from './components/ChatPanel';
 import { DraggableWidget } from './components/DraggableWidget';
 
-export type WidgetType = 'about' | 'music' | 'snowboarding' | 'biking' | 'books' | null;
+export type WidgetType = 'about' | 'music' | 'snowboarding' | 'biking' | 'books' | 'site' | null;
 
 interface Widget {
   id: WidgetType;
@@ -28,6 +29,7 @@ function App() {
     { id: 'music', component: MusicWidget },
     { id: 'snowboarding', component: SnowboardingWidget },
     { id: 'biking', component: BikeWidget },
+    { id: 'site', component: AboutSiteWidget },
     // { id: 'books', component: BooksWidget, className: 'md:col-span-2' } // Hidden for now
   ]);
 

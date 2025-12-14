@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Sparkles, Music, User, Mountain, Bike, Camera, BookOpen } from 'lucide-react';
+import { Send, Sparkles, Music, User, Mountain, Bike, Camera, BookOpen, Code } from 'lucide-react';
 import type { WidgetType } from '../App';
 
 interface ChatPanelProps {
@@ -69,6 +69,15 @@ const widgetContexts = {
       "I try to balance technical books with personal development and fiction.",
       "I usually read for 30 minutes before bed - it's a great way to wind down."
     ]
+  },
+  site: {
+    greeting: "Ask me anything about how this site is built!",
+    responses: [
+      "This site is built with React and TypeScript on the frontend, using Vite as the build tool.",
+      "The backend uses Vercel serverless functions to handle API requests and integrations.",
+      "Widgets are draggable and rearrangeable using react-dnd library.",
+      "The chat feature uses Claude AI to provide contextual responses based on which widget is active."
+    ]
   }
 };
 
@@ -78,7 +87,8 @@ const widgetIcons = {
   snowboarding: { icon: Mountain, color: 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400', border: 'border-cyan-500' },
   biking: { icon: Bike, color: 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400', border: 'border-orange-500' },
   books: { icon: BookOpen, color: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400', border: 'border-green-500' },
-  photos: { icon: Camera, color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', border: 'border-amber-500' }
+  photos: { icon: Camera, color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', border: 'border-amber-500' },
+  site: { icon: Code, color: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400', border: 'border-green-500' }
 };
 
 const suggestedPrompts = {
@@ -106,6 +116,11 @@ const suggestedPrompts = {
   photos: [
     "Tell me about your photography",
     "Where have you traveled?"
+  ],
+  site: [
+    "What technologies are used to build this site?",
+    "How does the chat feature work?",
+    "Can you explain the architecture?"
   ]
 };
 
@@ -280,7 +295,9 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${widgetIcons[activeWidget].border} ${widgetIcons[activeWidget].color}`}
             >
               {React.createElement(widgetIcons[activeWidget].icon, { className: 'w-4 h-4' })}
-              <span className="text-sm capitalize">Chatting about {activeWidget === 'about' ? 'me' : activeWidget}</span>
+              <span className="text-sm capitalize">
+                Chatting about {activeWidget === 'about' ? 'me' : activeWidget === 'site' ? 'this site' : activeWidget}
+              </span>
             </motion.div>
           )}
         </div>

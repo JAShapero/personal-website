@@ -195,6 +195,8 @@ function getWidgetContext(widget: string | null): string {
       return 'You are discussing Jeremy\'s reading habits, currently reading books, favorite authors, and book recommendations.';
     case 'photos':
       return 'You are discussing Jeremy\'s photography, travel experiences, memories from photos, and photography style.';
+    case 'site':
+      return 'You are helping visitors understand how this website is built. Discuss the tech stack, architecture, APIs, and implementation details. The site uses React, TypeScript, Tailwind CSS, Vite, Vercel serverless functions, and integrates with Claude AI, Spotify, Strava, and Hardcover APIs.';
     default:
       return 'You are a helpful assistant for Jeremy\'s personal website.';
   }
