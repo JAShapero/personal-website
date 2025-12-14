@@ -343,16 +343,29 @@ Use these tools to answer questions accurately. Be friendly, conversational, and
 If a tool call fails or data isn't available, gracefully explain that the information isn't currently available.`;
 
     // Call Claude API
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: allMessages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
-      tools,
-    });
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: allMessages.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        })),
+        tools,
+      });
+    } catch (apiError: any) {
+      // Handle Anthropic API errors
+      if (apiError.status === 529 || apiError.message?.includes('overloaded') || apiError.message?.includes('Overloaded')) {
+        return res.status(503).json({
+          error: 'Service temporarily unavailable',
+          message: 'The AI service is currently overloaded. Please try again in a few moments.',
+        });
+      }
+      // Re-throw to be caught by outer catch block
+      throw apiError;
+    }
 
     // Handle tool use if present
     let finalContent = '';
@@ -864,30 +877,43 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       }
 
       // Make a follow-up call with tool results
-      const followUpResponse = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [
-          ...allMessages.map(msg => ({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-          })),
-          {
-            role: 'assistant',
-            content: response.content,
-          },
-          {
-            role: 'user',
-            content: toolResults.map(tr => ({
-              type: 'tool_result' as const,
-              tool_use_id: tr.tool_use_id,
-              content: tr.content,
-              is_error: false,
+      let followUpResponse;
+      try {
+        followUpResponse = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [
+            ...allMessages.map(msg => ({
+              role: msg.role as 'user' | 'assistant',
+              content: msg.content,
             })),
-          },
-        ] as any,
-      });
+            {
+              role: 'assistant',
+              content: response.content,
+            },
+            {
+              role: 'user',
+              content: toolResults.map(tr => ({
+                type: 'tool_result' as const,
+                tool_use_id: tr.tool_use_id,
+                content: tr.content,
+                is_error: false,
+              })),
+            },
+          ] as any,
+        });
+      } catch (apiError: any) {
+        // Handle Anthropic API errors
+        if (apiError.status === 529 || apiError.message?.includes('overloaded') || apiError.message?.includes('Overloaded')) {
+          return res.status(503).json({
+            error: 'Service temporarily unavailable',
+            message: 'The AI service is currently overloaded. Please try again in a few moments.',
+          });
+        }
+        // Re-throw to be caught by outer catch block
+        throw apiError;
+      }
 
       if (!followUpResponse.content || followUpResponse.content.length === 0) {
         finalContent = 'I encountered an issue processing your request. Please try again.';
@@ -906,6 +932,15 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     });
   } catch (error: any) {
     console.error('Chat API error:', error);
+    
+    // Handle Anthropic API errors
+    if (error.status === 529 || error.message?.includes('overloaded') || error.message?.includes('Overloaded')) {
+      return res.status(503).json({
+        error: 'Service temporarily unavailable',
+        message: 'The AI service is currently overloaded. Please try again in a few moments.',
+      });
+    }
+    
     return res.status(500).json({
       error: 'Internal server error',
       message: error.message || 'An error occurred while processing your request.',

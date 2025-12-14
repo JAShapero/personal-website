@@ -234,14 +234,19 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
     } catch (error: any) {
       console.error('Chat error:', error);
       
+      // Check if it's an overloaded service error
+      const isOverloaded = error.message?.includes('overloaded') || error.message?.includes('Overloaded') || error.message?.includes('temporarily unavailable');
+      
       // Fallback to mock response if API fails
       const context = widgetContexts[activeWidget];
-      const randomResponse = context.responses[Math.floor(Math.random() * context.responses.length)];
+      const randomResponse = context?.responses?.[Math.floor(Math.random() * (context.responses?.length || 1))] || 'I had trouble processing that request.';
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: error.message?.includes('ANTHROPIC_API_KEY') 
           ? '⚠️ Claude API is not configured. Please set ANTHROPIC_API_KEY in your Vercel environment variables. Using fallback response: ' + randomResponse
+          : isOverloaded
+          ? '⚠️ The AI service is currently overloaded. Please try again in a few moments. Here\'s a fallback response: ' + randomResponse
           : 'Sorry, I encountered an error. ' + (error.message || 'Please try again.'),
         sender: 'assistant',
         timestamp: new Date()
