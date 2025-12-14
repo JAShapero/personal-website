@@ -72,7 +72,7 @@ export function BooksWidget({ isActive, onClick, className = '' }: BooksWidgetPr
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border min-h-[420px] flex flex-col ${
+      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
         isActive 
           ? 'border-orange-500 shadow-md' 
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'

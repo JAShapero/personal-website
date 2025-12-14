@@ -325,7 +325,7 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
         onClick={onClick}
-        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border min-h-[420px] flex flex-col ${
+        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
           isActive 
             ? 'border-cyan-500 shadow-md' 
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
@@ -350,7 +350,7 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
         onClick={onClick}
-        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border min-h-[420px] flex flex-col ${
+        className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
           isActive 
             ? 'border-cyan-500 shadow-md' 
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
@@ -378,7 +378,7 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border min-h-[420px] flex flex-col ${
+      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
         isActive 
           ? 'border-cyan-500 shadow-md' 
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
@@ -391,7 +391,7 @@ export function SnowboardingWidget({ isActive, onClick }: SnowboardingWidgetProp
         <h3 className="text-gray-900 dark:text-gray-100">Snowboarding</h3>
       </div>
       
-      <div className="h-[200px] flex-1">
+      <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" opacity={0.5} />
