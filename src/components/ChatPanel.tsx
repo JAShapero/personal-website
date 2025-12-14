@@ -88,8 +88,8 @@ const suggestedPrompts = {
     "Fender or Gibson 🎸"
   ],
   music: [
-    "What music do you listen to?",
-    "What are your favorite artists?"
+    "Top songs that aren't kids songs?",
+    "How often does baby shark get played?"
   ],
   snowboarding: [
     "Where do you snowboard most often?",
