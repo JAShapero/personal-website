@@ -16,6 +16,9 @@ interface StravaActivity {
   route_polyline: string | null; // encoded polyline
   start_date?: string;
   start_date_local?: string;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_country?: string | null;
 }
 
 const mockStravaData: StravaActivity = {
@@ -23,7 +26,10 @@ const mockStravaData: StravaActivity = {
   elevation_gain: 523, // meters = 1716 feet
   moving_time: 7245, // 2 hours 45 seconds
   name: "Morning Highline Canal Ride",
-  route_polyline: null // In real app, decode this to draw route
+  route_polyline: null, // In real app, decode this to draw route
+  start_date_local: new Date().toISOString(),
+  location_city: "Boulder",
+  location_state: "CO"
 };
 
 function formatDuration(seconds: number): string {
@@ -43,6 +49,40 @@ function formatDistance(meters: number): string {
 function formatElevation(meters: number): string {
   const feet = meters * 3.28084;
   return `${Math.round(feet)} ft`;
+}
+
+function formatActivityDisplay(activity: StravaActivity): string {
+  // Format date as MM/DD/YY
+  let dateStr = '';
+  if (activity.start_date_local) {
+    const date = new Date(activity.start_date_local);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    dateStr = `${month}/${day}/${year}`;
+  }
+
+  // Format location as City, State
+  const locationParts: string[] = [];
+  if (activity.location_city) {
+    locationParts.push(activity.location_city);
+  }
+  if (activity.location_state) {
+    locationParts.push(activity.location_state);
+  }
+  const locationStr = locationParts.length > 0 ? locationParts.join(', ') : '';
+
+  // Combine date and location
+  if (dateStr && locationStr) {
+    return `${dateStr} - ${locationStr}`;
+  } else if (dateStr) {
+    return dateStr;
+  } else if (locationStr) {
+    return locationStr;
+  } else {
+    // Fallback to activity name if no date/location
+    return activity.name;
+  }
 }
 
 export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
@@ -155,7 +195,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         </div>
         <div className="flex-1">
           <h3 className="text-gray-900 dark:text-gray-100">Last Ride</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{activity.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{formatActivityDisplay(activity)}</p>
         </div>
       </div>
 

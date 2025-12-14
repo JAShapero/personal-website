@@ -9,6 +9,9 @@ interface StravaActivity {
   total_elevation_gain: number; // in meters
   start_date: string;
   start_date_local: string;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_country?: string | null;
   map?: {
     summary_polyline?: string;
     polyline?: string;
@@ -179,6 +182,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           elapsed_time: detailedActivity.elapsed_time,
           start_date: detailedActivity.start_date,
           start_date_local: detailedActivity.start_date_local,
+          location_city: detailedActivity.location_city,
+          location_state: detailedActivity.location_state,
+          location_country: detailedActivity.location_country,
           route_polyline: detailedActivity.map?.summary_polyline || detailedActivity.map?.polyline || null,
         },
       };
