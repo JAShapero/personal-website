@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Mail, Linkedin } from 'lucide-react';
 import { AboutWidget } from './components/AboutWidget';
 import { MusicWidget } from './components/MusicWidget';
 import { SnowboardingWidget } from './components/SnowboardingWidget';
@@ -93,18 +93,41 @@ function App() {
             <div className="flex items-center justify-between">
               <h1 className="text-4xl font-semibold" style={{ fontSize: '1.6875rem' }}>Jeremy Shapero</h1>
               
-              {/* Theme Toggle Button */}
-              <button
-                onClick={toggleTheme}
-                className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-                aria-label="Toggle theme"
-              >
-                {isDarkMode ? (
-                  <Sun className="w-5 h-5 text-yellow-500" />
-                ) : (
-                  <Moon className="w-5 h-5 text-gray-700" />
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                {/* Email Button */}
+                <a
+                  href="mailto:jeremy.shapero@gmail.com"
+                  className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+                  aria-label="Send email"
+                >
+                  <Mail className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </a>
+                
+                {/* LinkedIn Button */}
+                <a
+                  href="https://www.linkedin.com/in/jeremyshapero"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+                  aria-label="LinkedIn profile"
+                >
+                  <Linkedin className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </a>
+                
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+                  aria-label="Toggle theme"
+                >
+                  {isDarkMode ? (
+                    <Sun className="w-5 h-5 text-yellow-500" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-gray-700" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </header>
