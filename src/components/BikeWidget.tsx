@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Bike, TrendingUp, Mountain as MountainIcon, Clock, Loader2 } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default icon issue
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 interface BikeWidgetProps {
   isActive: boolean;
@@ -91,51 +101,95 @@ function decodePolyline(encoded: string): Array<[number, number]> {
   return coordinates;
 }
 
-// Convert lat/lng coordinates to SVG path
-function coordinatesToPath(coordinates: Array<[number, number]>, width: number, height: number): string {
-  if (coordinates.length === 0) return '';
+// RouteMap component using Leaflet
+function RouteMap({ polyline }: { polyline: string | null }) {
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const polylineRef = useRef<L.Polyline | null>(null);
+  const startMarkerRef = useRef<L.Marker | null>(null);
+  const endMarkerRef = useRef<L.Marker | null>(null);
 
-  // Find bounds
-  let minLat = coordinates[0][0];
-  let maxLat = coordinates[0][0];
-  let minLng = coordinates[0][1];
-  let maxLng = coordinates[0][1];
+  useEffect(() => {
+    if (!mapContainerRef.current || !polyline) return;
 
-  coordinates.forEach(([lat, lng]) => {
-    minLat = Math.min(minLat, lat);
-    maxLat = Math.max(maxLat, lat);
-    minLng = Math.min(minLng, lng);
-    maxLng = Math.max(maxLng, lng);
-  });
+    // Initialize map
+    if (!mapRef.current) {
+      const coordinates = decodePolyline(polyline);
+      if (coordinates.length === 0) return;
 
-  // Add padding
-  const latRange = maxLat - minLat || 0.01;
-  const lngRange = maxLng - minLng || 0.01;
-  const padding = 0.1;
-  const paddedLatRange = latRange * (1 + padding * 2);
-  const paddedLngRange = lngRange * (1 + padding * 2);
-  const centerLat = (minLat + maxLat) / 2;
-  const centerLng = (minLng + maxLng) / 2;
+      // Calculate bounds
+      const latlngs = coordinates.map(([lat, lng]) => [lat, lng] as [number, number]);
+      const bounds = L.latLngBounds(latlngs);
 
-  minLat = centerLat - paddedLatRange / 2;
-  maxLat = centerLat + paddedLatRange / 2;
-  minLng = centerLng - paddedLngRange / 2;
-  maxLng = centerLng + paddedLngRange / 2;
+      // Create map
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        touchZoom: false,
+        doubleClickZoom: false,
+        scrollWheelZoom: false,
+        boxZoom: false,
+        keyboard: false,
+      });
 
-  // Convert to SVG coordinates
-  const scaleX = width / (maxLng - minLng);
-  const scaleY = height / (maxLat - minLat);
-  const scale = Math.min(scaleX, scaleY);
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(map);
 
-  const path = coordinates
-    .map(([lat, lng], index) => {
-      const x = ((lng - minLng) * scale) + (width - (maxLng - minLng) * scale) / 2;
-      const y = height - ((lat - minLat) * scale) - (height - (maxLat - minLat) * scale) / 2;
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
+      // Fit map to route bounds with padding
+      map.fitBounds(bounds, { padding: [10, 10] });
 
-  return path;
+      // Add route polyline
+      const routePolyline = L.polyline(latlngs, {
+        color: '#10b981',
+        weight: 4,
+        opacity: 0.9,
+        lineJoin: 'round',
+        lineCap: 'round',
+      }).addTo(map);
+
+      // Add start marker
+      const startIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background-color: #10b981; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+      const startMarker = L.marker([coordinates[0][0], coordinates[0][1]], { icon: startIcon }).addTo(map);
+
+      // Add end marker
+      const endIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background-color: #059669; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+      const endMarker = L.marker(
+        [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
+        { icon: endIcon }
+      ).addTo(map);
+
+      mapRef.current = map;
+      polylineRef.current = routePolyline;
+      startMarkerRef.current = startMarker;
+      endMarkerRef.current = endMarker;
+    }
+
+    // Cleanup
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        polylineRef.current = null;
+        startMarkerRef.current = null;
+        endMarkerRef.current = null;
+      }
+    };
+  }, [polyline]);
+
+  return <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: '128px' }} />;
 }
 
 function formatActivityDisplay(activity: StravaActivity): string {
@@ -289,78 +343,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       {/* Route Map */}
       <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 h-32 relative">
         {activity.route_polyline ? (
-          (() => {
-            try {
-              const coordinates = decodePolyline(activity.route_polyline);
-              const path = coordinatesToPath(coordinates, 300, 128);
-              const startPoint = coordinates[0];
-              const endPoint = coordinates[coordinates.length - 1];
-              
-              // Calculate SVG coordinates for markers
-              let minLat = coordinates[0][0];
-              let maxLat = coordinates[0][0];
-              let minLng = coordinates[0][1];
-              let maxLng = coordinates[0][1];
-              coordinates.forEach(([lat, lng]) => {
-                minLat = Math.min(minLat, lat);
-                maxLat = Math.max(maxLat, lat);
-                minLng = Math.min(minLng, lng);
-                maxLng = Math.max(maxLng, lng);
-              });
-              const latRange = maxLat - minLat || 0.01;
-              const lngRange = maxLng - minLng || 0.01;
-              const padding = 0.1;
-              const paddedLatRange = latRange * (1 + padding * 2);
-              const paddedLngRange = lngRange * (1 + padding * 2);
-              const centerLat = (minLat + maxLat) / 2;
-              const centerLng = (minLng + maxLng) / 2;
-              minLat = centerLat - paddedLatRange / 2;
-              maxLat = centerLat + paddedLatRange / 2;
-              minLng = centerLng - paddedLngRange / 2;
-              maxLng = centerLng + paddedLngRange / 2;
-              const width = 300;
-              const height = 128;
-              const scaleX = width / (maxLng - minLng);
-              const scaleY = height / (maxLat - minLat);
-              const scale = Math.min(scaleX, scaleY);
-              
-              const startX = ((startPoint[1] - minLng) * scale) + (width - (maxLng - minLng) * scale) / 2;
-              const startY = height - ((startPoint[0] - minLat) * scale) - (height - (maxLat - minLat) * scale) / 2;
-              const endX = ((endPoint[1] - minLng) * scale) + (width - (maxLng - minLng) * scale) / 2;
-              const endY = height - ((endPoint[0] - minLat) * scale) - (height - (maxLat - minLat) * scale) / 2;
-
-              return (
-                <svg className="w-full h-full" viewBox="0 0 300 128" preserveAspectRatio="xMidYMid meet">
-                  <defs>
-                    <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" style={{ stopColor: '#10b981', stopOpacity: 0.8 }} />
-                      <stop offset="100%" style={{ stopColor: '#059669', stopOpacity: 1 }} />
-                    </linearGradient>
-                  </defs>
-                  {/* Route path */}
-                  <path
-                    d={path}
-                    stroke="url(#routeGradient)"
-                    strokeWidth="2.5"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  {/* Start marker */}
-                  <circle cx={startX} cy={startY} r="4" fill="#10b981" stroke="white" strokeWidth="1.5" />
-                  {/* End marker */}
-                  <circle cx={endX} cy={endY} r="4" fill="#059669" stroke="white" strokeWidth="1.5" />
-                </svg>
-              );
-            } catch (error) {
-              console.error('Error rendering map:', error);
-              return (
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-                  Map unavailable
-                </div>
-              );
-            }
-          })()
+          <RouteMap polyline={activity.route_polyline} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
             No route data available
