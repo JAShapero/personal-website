@@ -26,7 +26,7 @@ const widgetContexts = {
     ]
   },
   music: {
-    greeting: "Let's talk music! I'm really into electronic and ambient stuff.",
+    greeting: "Seemed like a better idea before I saw the influence of my kids 🙈",
     responses: [
       "M83's 'Midnight City' is my go-to coding soundtrack - perfect energy!",
       "I've been listening to a lot of progressive house and ambient electronic lately.",

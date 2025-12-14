@@ -33,7 +33,8 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
 
     try {
       // Fetch recently played tracks from our API endpoint
-      const recentResponse = await fetch('/api/spotify?type=recent&limit=10');
+      // Request more tracks to account for duplicates, then we'll limit to 10 unique
+      const recentResponse = await fetch('/api/spotify?type=recent&limit=50');
       
       if (!recentResponse.ok) {
         const errorData = await recentResponse.json().catch(() => ({}));
@@ -48,7 +49,8 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
       }
 
       const recentData = await recentResponse.json();
-      setRecentTracks(recentData.tracks || []);
+      // Limit to 10 unique tracks after duplicates are removed
+      setRecentTracks((recentData.tracks || []).slice(0, 10));
 
       // Fetch top tracks (all time - using long_term time range)
       // Note: Spotify's long_term is calculated from several years, not true all-time
