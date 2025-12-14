@@ -204,7 +204,10 @@ function RouteMap({
       onClick={!interactive && onClick ? onClick : undefined}
       style={{ 
         minHeight: interactive ? '600px' : '128px',
-        cursor: !interactive && onClick ? 'pointer' : 'default'
+        cursor: !interactive && onClick ? 'pointer' : 'default',
+        position: 'relative',
+        zIndex: 1,
+        isolation: 'isolate' // Create a new stacking context
       }}
     />
   );
@@ -375,7 +378,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       </div>
 
       {/* Route Map */}
-      <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 h-32 relative">
+      <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 h-32 relative bike-widget-map-container" style={{ zIndex: 1, isolation: 'isolate' }}>
         {activity.route_polyline ? (
           <RouteMap 
             polyline={activity.route_polyline} 

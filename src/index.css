@@ -1425,6 +1425,19 @@ html {
   font-size: var(--font-size);
 }
 
+/* Limit Leaflet map z-index in bike widget to prevent it from appearing above header */
+.bike-widget-map-container .leaflet-container,
+.bike-widget-map-container .leaflet-pane,
+.bike-widget-map-container .leaflet-map-pane,
+.bike-widget-map-container .leaflet-tile-pane,
+.bike-widget-map-container .leaflet-overlay-pane,
+.bike-widget-map-container .leaflet-shadow-pane,
+.bike-widget-map-container .leaflet-marker-pane,
+.bike-widget-map-container .leaflet-tooltip-pane,
+.bike-widget-map-container .leaflet-popup-pane {
+  z-index: 1 !important;
+}
+
 @property --tw-space-y-reverse {
   syntax: "*";
   inherits: false;
