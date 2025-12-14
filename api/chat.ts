@@ -59,6 +59,53 @@ async function refreshSpotifyToken(): Promise<string | null> {
   return null;
 }
 
+// Refresh Strava access token using refresh token
+async function refreshStravaToken(): Promise<string | null> {
+  const clientId = process.env.STRAVA_CLIENT_ID;
+  const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+  const refreshToken = process.env.STRAVA_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.access_token;
+    }
+  } catch (error) {
+    console.error('Error refreshing Strava token:', error);
+  }
+
+  return null;
+}
+
+// Get a valid Strava access token
+async function getValidStravaToken(): Promise<string | null> {
+  let token: string | null = process.env.STRAVA_ACCESS_TOKEN || null;
+  
+  // If no token or token might be expired, try to refresh
+  if (!token) {
+    token = await refreshStravaToken();
+  }
+  
+  return token;
+}
+
 interface ChatRequest {
   messages: Array<{
     role: 'user' | 'assistant';
@@ -436,11 +483,235 @@ If a tool call fails or data isn't available, gracefully explain that the inform
               break;
               
             case 'get_biking_data':
-              // For now, return placeholder since we need Strava API integration
-              toolResult = {
-                tool_use_id: toolCall.id,
-                content: 'Bike ride data would come from Strava API. Currently using mock data in the widget. To enable this, configure Strava API credentials.',
-              };
+              try {
+                const { query } = toolCall.input;
+                const accessToken = await getValidStravaToken();
+
+                if (!accessToken) {
+                  toolResult = {
+                    tool_use_id: toolCall.id,
+                    content: 'Strava API is not configured. Please set STRAVA_ACCESS_TOKEN or STRAVA_CLIENT_ID/STRAVA_CLIENT_SECRET/STRAVA_REFRESH_TOKEN in environment variables.',
+                  };
+                  break;
+                }
+
+                let result = '';
+
+                if (query === 'last_ride' || query === 'recent_ride' || query === 'latest_ride') {
+                  // Fetch the latest bike activity
+                  const response = await fetch(
+                    'https://www.strava.com/api/v3/athlete/activities?per_page=10',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Strava API error: ${response.status}`);
+                  }
+
+                  const activities = await response.json();
+                  const bikeActivities = activities.filter((activity: any) => activity.type === 'Ride');
+                  
+                  if (bikeActivities.length === 0) {
+                    result = 'No bike rides found in recent activities.';
+                  } else {
+                    const latestActivity = bikeActivities[0];
+                    
+                    // Fetch detailed activity info
+                    const detailResponse = await fetch(
+                      `https://www.strava.com/api/v3/activities/${latestActivity.id}`,
+                      {
+                        headers: {
+                          Authorization: `Bearer ${accessToken}`,
+                        },
+                      }
+                    );
+
+                    if (detailResponse.ok) {
+                      const detailedActivity = await detailResponse.json();
+                      const distanceKm = (detailedActivity.distance / 1000).toFixed(2);
+                      const distanceMiles = (detailedActivity.distance * 0.000621371).toFixed(2);
+                      const elevationFeet = Math.round(detailedActivity.total_elevation_gain * 3.28084);
+                      const hours = Math.floor(detailedActivity.moving_time / 3600);
+                      const minutes = Math.floor((detailedActivity.moving_time % 3600) / 60);
+                      const date = new Date(detailedActivity.start_date_local).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      });
+                      
+                      result = `Last bike ride:\n`;
+                      result += `- Date: ${date}\n`;
+                      result += `- Name: ${detailedActivity.name}\n`;
+                      result += `- Distance: ${distanceMiles} miles (${distanceKm} km)\n`;
+                      result += `- Elevation gain: ${elevationFeet} ft (${Math.round(detailedActivity.total_elevation_gain)} m)\n`;
+                      result += `- Duration: ${hours > 0 ? `${hours}h ` : ''}${minutes}m\n`;
+                      if (detailedActivity.location_city && detailedActivity.location_state) {
+                        result += `- Location: ${detailedActivity.location_city}, ${detailedActivity.location_state}\n`;
+                      }
+                    } else {
+                      // Fallback to basic activity data
+                      const distanceMiles = (latestActivity.distance * 0.000621371).toFixed(2);
+                      result = `Last bike ride: ${latestActivity.name} - ${distanceMiles} miles on ${new Date(latestActivity.start_date_local).toLocaleDateString()}`;
+                    }
+                  }
+                } else if (query === 'recent_rides' || query === 'recent_activities') {
+                  const response = await fetch(
+                    'https://www.strava.com/api/v3/athlete/activities?per_page=10',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Strava API error: ${response.status}`);
+                  }
+
+                  const activities = await response.json();
+                  const bikeActivities = activities.filter((activity: any) => activity.type === 'Ride');
+                  
+                  if (bikeActivities.length === 0) {
+                    result = 'No recent bike rides found.';
+                  } else {
+                    result = `Recent bike rides (${bikeActivities.length}):\n`;
+                    bikeActivities.slice(0, 5).forEach((activity: any, index: number) => {
+                      const distanceMiles = (activity.distance * 0.000621371).toFixed(1);
+                      const date = new Date(activity.start_date_local).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                      });
+                      result += `${index + 1}. ${activity.name} - ${distanceMiles} mi on ${date}\n`;
+                    });
+                  }
+                } else if (query === 'total_distance' || query === 'total_miles' || query === 'total_km') {
+                  const response = await fetch(
+                    'https://www.strava.com/api/v3/athlete/activities?per_page=200',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Strava API error: ${response.status}`);
+                  }
+
+                  const activities = await response.json();
+                  const bikeActivities = activities.filter((activity: any) => activity.type === 'Ride');
+                  
+                  if (bikeActivities.length === 0) {
+                    result = 'No bike rides found to calculate total distance.';
+                  } else {
+                    const totalMeters = bikeActivities.reduce((sum: number, activity: any) => sum + activity.distance, 0);
+                    const totalMiles = (totalMeters * 0.000621371).toFixed(1);
+                    const totalKm = (totalMeters / 1000).toFixed(1);
+                    result = `Total distance from last ${bikeActivities.length} rides:\n`;
+                    result += `- ${totalMiles} miles (${totalKm} km)\n`;
+                    result += `- Based on ${bikeActivities.length} bike activities`;
+                  }
+                } else if (query === 'elevation_gain' || query === 'total_elevation') {
+                  const response = await fetch(
+                    'https://www.strava.com/api/v3/athlete/activities?per_page=200',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Strava API error: ${response.status}`);
+                  }
+
+                  const activities = await response.json();
+                  const bikeActivities = activities.filter((activity: any) => activity.type === 'Ride');
+                  
+                  if (bikeActivities.length === 0) {
+                    result = 'No bike rides found to calculate elevation gain.';
+                  } else {
+                    const totalElevation = bikeActivities.reduce((sum: number, activity: any) => sum + (activity.total_elevation_gain || 0), 0);
+                    const totalFeet = Math.round(totalElevation * 3.28084);
+                    result = `Total elevation gain from last ${bikeActivities.length} rides:\n`;
+                    result += `- ${totalFeet} ft (${Math.round(totalElevation)} m)\n`;
+                    result += `- Based on ${bikeActivities.length} bike activities`;
+                  }
+                } else if (query === 'longest_ride' || query === 'longest_distance') {
+                  const response = await fetch(
+                    'https://www.strava.com/api/v3/athlete/activities?per_page=200',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`Strava API error: ${response.status}`);
+                  }
+
+                  const activities = await response.json();
+                  const bikeActivities = activities.filter((activity: any) => activity.type === 'Ride');
+                  
+                  if (bikeActivities.length === 0) {
+                    result = 'No bike rides found.';
+                  } else {
+                    const longest = bikeActivities.reduce((longest: any, activity: any) => 
+                      activity.distance > longest.distance ? activity : longest
+                    );
+                    const distanceMiles = (longest.distance * 0.000621371).toFixed(2);
+                    const distanceKm = (longest.distance / 1000).toFixed(2);
+                    const date = new Date(longest.start_date_local).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    });
+                    result = `Longest ride:\n`;
+                    result += `- ${longest.name}\n`;
+                    result += `- Distance: ${distanceMiles} miles (${distanceKm} km)\n`;
+                    result += `- Date: ${date}\n`;
+                  }
+                } else {
+                  // Default: get last ride info
+                  const response = await fetch(
+                    'https://www.strava.com/api/v3/athlete/activities?per_page=1',
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (response.ok) {
+                    const activities = await response.json();
+                    const bikeActivities = activities.filter((activity: any) => activity.type === 'Ride');
+                    if (bikeActivities.length > 0) {
+                      const latest = bikeActivities[0];
+                      const distanceMiles = (latest.distance * 0.000621371).toFixed(2);
+                      result = `Latest bike ride: ${latest.name} - ${distanceMiles} miles on ${new Date(latest.start_date_local).toLocaleDateString()}`;
+                    } else {
+                      result = 'No bike rides found.';
+                    }
+                  } else {
+                    throw new Error(`Strava API error: ${response.status}`);
+                  }
+                }
+
+                toolResult = {
+                  tool_use_id: toolCall.id,
+                  content: result || 'No biking data available.',
+                };
+              } catch (error: any) {
+                toolResult = {
+                  tool_use_id: toolCall.id,
+                  content: `Error fetching biking data: ${error.message}. Please ensure Strava API is properly configured.`,
+                };
+              }
               break;
               
             case 'get_books_data':
