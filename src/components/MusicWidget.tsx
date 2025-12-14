@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Music, Loader2, Info } from 'lucide-react';
+import { Music, Loader2 } from 'lucide-react';
 
 interface MusicWidgetProps {
   isActive: boolean;
@@ -33,7 +33,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
 
     try {
       // Fetch recently played tracks from our API endpoint
-      const recentResponse = await fetch('/api/spotify?type=recent&limit=15');
+      const recentResponse = await fetch('/api/spotify?type=recent&limit=10');
       
       if (!recentResponse.ok) {
         const errorData = await recentResponse.json().catch(() => ({}));
@@ -124,19 +124,9 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          Top Tracks
+          Top Tracks P365
         </button>
       </div>
-
-      {/* Info note for Top Tracks */}
-      {view === 'lifetime' && topTracks.length > 0 && (
-        <div className="mb-3 flex items-start gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-md">
-          <Info className="w-3 h-3 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-purple-700 dark:text-purple-300">
-            Spotify's calculated top tracks from several years of listening history. Rankings are algorithmic, not based on play counts.
-          </p>
-        </div>
-      )}
 
       {/* Content */}
       {loading ? (
