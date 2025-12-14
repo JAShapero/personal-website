@@ -118,10 +118,10 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
               {/* Close Button */}
               <button
                 onClick={closeModal}
-                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors"
+                className="absolute -top-12 right-0 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
                 aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
 
               {/* Photo */}
