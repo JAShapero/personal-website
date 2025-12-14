@@ -93,22 +93,22 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-lg max-h-[70vh] w-full flex items-center justify-center"
+              className="relative max-w-4xl max-h-[90vh] w-full"
             >
               {/* Close Button */}
               <button
                 onClick={closeModal}
-                className="absolute top-2 right-2 z-10 p-2 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors"
+                className="absolute -top-12 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
                 aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
 
               {/* Photo */}
               <img
                 src={selectedPhoto.url}
                 alt={selectedPhoto.caption}
-                className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                className="w-full h-full object-contain rounded-lg"
               />
             </motion.div>
           </motion.div>
