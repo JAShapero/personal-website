@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Music, Loader2 } from 'lucide-react';
+import { Music, Loader2, Info } from 'lucide-react';
 
 interface MusicWidgetProps {
   isActive: boolean;
@@ -51,7 +51,8 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
       setRecentTracks(recentData.tracks || []);
 
       // Fetch top tracks (all time - using long_term time range)
-      const topResponse = await fetch('/api/spotify?type=top&limit=15&time_range=long_term');
+      // Note: Spotify's long_term is calculated from several years, not true all-time
+      const topResponse = await fetch('/api/spotify?type=top&limit=50&time_range=long_term');
       
       if (!topResponse.ok) {
         const errorData = await topResponse.json().catch(() => ({}));
@@ -65,6 +66,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
       }
 
       const topData = await topResponse.json();
+      console.log('Spotify Top Tracks Response:', topData);
       setTopTracks(topData.tracks || []);
       setLoading(false);
     } catch (err: any) {
@@ -122,9 +124,19 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          All Time
+          Top Tracks
         </button>
       </div>
+
+      {/* Info note for Top Tracks */}
+      {view === 'lifetime' && topTracks.length > 0 && (
+        <div className="mb-3 flex items-start gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-md">
+          <Info className="w-3 h-3 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-purple-700 dark:text-purple-300">
+            Spotify's calculated top tracks from several years of listening history. Rankings are algorithmic, not based on play counts.
+          </p>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (

@@ -152,8 +152,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (type === 'recent') {
       const recentData = await fetchRecentlyPlayed(accessToken, parseInt(limit as string));
+      
+      // Remove duplicates based on track title and artist
+      const seen = new Set<string>();
+      const uniqueTracks = recentData.items.filter((item) => {
+        const trackKey = `${item.track.name.toLowerCase()}|${item.track.artists.map((a) => a.name.toLowerCase()).join(',')}`;
+        if (seen.has(trackKey)) {
+          return false;
+        }
+        seen.add(trackKey);
+        return true;
+      });
+      
       data = {
-        tracks: recentData.items.map((item) => ({
+        tracks: uniqueTracks.map((item) => ({
           title: item.track.name,
           artist: item.track.artists.map((a) => a.name).join(', '),
           playedAt: item.played_at,
@@ -166,6 +178,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         time_range as 'short_term' | 'medium_term' | 'long_term',
         parseInt(limit as string)
       );
+      console.log('Spotify Top Tracks API Response:', JSON.stringify(topData, null, 2));
       data = {
         tracks: topData.items.map((track, index) => ({
           title: track.name,
