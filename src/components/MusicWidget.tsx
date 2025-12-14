@@ -93,7 +93,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border ${
+      className={`bg-white dark:bg-gray-800 rounded-xl p-6 cursor-pointer transition-all border min-h-[420px] flex flex-col ${
         isActive
           ? 'border-purple-500 shadow-md'
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
@@ -140,7 +140,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
           {error}
         </div>
       ) : (
-        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        <div className="space-y-3 flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           {tracks.map((track, index) => (
             <div key={index} className="flex items-center justify-between">
               <div className="flex-1 min-w-0 pr-2">
