@@ -57,7 +57,7 @@ export function AboutWidget({ isActive, onClick }: AboutWidgetProps) {
         </div>
         
         {/* Photo Gallery */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {photos.map((photo, index) => (
             <motion.div
               key={index}
