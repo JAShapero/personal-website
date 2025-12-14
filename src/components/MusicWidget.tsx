@@ -140,7 +140,7 @@ export function MusicWidget({ isActive, onClick }: MusicWidgetProps) {
           {error}
         </div>
       ) : (
-        <div className="space-y-3 flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           {tracks.map((track, index) => (
             <div key={index} className="flex items-center justify-between">
               <div className="flex-1 min-w-0 pr-2">
