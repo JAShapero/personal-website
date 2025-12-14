@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bike, TrendingUp, Mountain as MountainIcon, Clock, Loader2, X } from 'lucide-react';
 import L from 'leaflet';
@@ -406,40 +407,43 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
         </div>
       )}
 
-      {/* Map Lightbox Modal */}
-      <AnimatePresence>
-        {isMapModalOpen && activity.route_polyline && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsMapModalOpen(false)}
-            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
-            style={{ margin: 0 }}
-          >
+      {/* Map Lightbox Modal - Rendered via Portal */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isMapModalOpen && activity.route_polyline && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-6xl h-[90vh] bg-white dark:bg-gray-800 rounded-lg overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMapModalOpen(false)}
+              className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
+              style={{ margin: 0 }}
             >
-              {/* Close Button */}
-              <button
-                onClick={() => setIsMapModalOpen(false)}
-                className="absolute top-4 right-4 z-[1000] p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors shadow-lg"
-                aria-label="Close map"
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full max-w-6xl h-[90vh] bg-white dark:bg-gray-800 rounded-lg overflow-hidden"
               >
-                <X className="w-6 h-6" />
-              </button>
+                {/* Close Button */}
+                <button
+                  onClick={() => setIsMapModalOpen(false)}
+                  className="absolute top-4 right-4 z-[10000] p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors shadow-lg"
+                  aria-label="Close map"
+                >
+                  <X className="w-6 h-6" />
+                </button>
 
-              {/* Interactive Map */}
-              <RouteMap polyline={activity.route_polyline} interactive={true} />
+                {/* Interactive Map */}
+                <RouteMap polyline={activity.route_polyline} interactive={true} />
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 }
