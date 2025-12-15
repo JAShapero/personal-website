@@ -563,7 +563,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 ${!showSuggestions || messages.length > 1 ? 'pb-4' : ''}`}>
         <AnimatePresence mode="popLayout">
           {messages.map((message) => (
             <motion.div
