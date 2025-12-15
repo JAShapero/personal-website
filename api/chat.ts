@@ -295,6 +295,13 @@ const tools = [
   },
 ];
 
+// Helper function to send SSE event
+function sendSSEEvent(res: VercelResponse, event: string, data: any) {
+  const jsonData = JSON.stringify(data);
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${jsonData}\n\n`);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -314,10 +321,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Check if client wants streaming (via query param or header)
+  const useStreaming = req.query.stream === 'true' || req.headers['accept']?.includes('text/event-stream');
+  
+  if (useStreaming) {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  }
+
   try {
     const { messages, activeWidget, conversationHistory = [] } = req.body as ChatRequest;
 
     if (!process.env.ANTHROPIC_API_KEY) {
+      if (useStreaming) {
+        sendSSEEvent(res, 'error', {
+          error: 'ANTHROPIC_API_KEY not configured',
+          message: 'Please set ANTHROPIC_API_KEY in your Vercel environment variables.'
+        });
+        res.end();
+        return;
+      }
       return res.status(500).json({ 
         error: 'ANTHROPIC_API_KEY not configured',
         message: 'Please set ANTHROPIC_API_KEY in your Vercel environment variables.'
@@ -400,6 +426,14 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     let planningInfo: { tools: string[]; reasoning: string } | null = null;
 
     if (!response.content || response.content.length === 0) {
+      if (useStreaming) {
+        sendSSEEvent(res, 'error', {
+          error: 'Empty response from Claude API',
+          message: 'The AI response was empty. Please try again.'
+        });
+        res.end();
+        return;
+      }
       return res.status(500).json({
         error: 'Empty response from Claude API',
         message: 'The AI response was empty. Please try again.',
@@ -446,6 +480,11 @@ If a tool call fails or data isn't available, gracefully explain that the inform
         tools: toolsUsed,
         reasoning: reasoning
       };
+      
+      // Send planning event immediately via SSE if streaming
+      if (useStreaming && planningInfo) {
+        sendSSEEvent(res, 'planning', planningInfo);
+      }
     } else if (textContent && textContent.text) {
       // No tool calls, but check if there's a planning statement in text
       const planningMatch = textContent.text.match(/I'll use (?:the )?([^.]+?)(?: tool)?(?:s)? (?:to|for)/i) ||
@@ -459,6 +498,11 @@ If a tool call fails or data isn't available, gracefully explain that the inform
             ? firstSentence.substring(0, 200) + '...'
             : firstSentence
         };
+        
+        // Send planning event immediately via SSE if streaming
+        if (useStreaming && planningInfo) {
+          sendSSEEvent(res, 'planning', planningInfo);
+        }
       }
     }
 
@@ -1008,6 +1052,14 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       } catch (apiError: any) {
         // Handle Anthropic API errors
         if (apiError.status === 529 || apiError.message?.includes('overloaded') || apiError.message?.includes('Overloaded')) {
+          if (useStreaming) {
+            sendSSEEvent(res, 'error', {
+              error: 'Service temporarily unavailable',
+              message: 'The AI service is currently overloaded. Please try again in a few moments.'
+            });
+            res.end();
+            return;
+          }
           return res.status(503).json({
             error: 'Service temporarily unavailable',
             message: 'The AI service is currently overloaded. Please try again in a few moments.',
@@ -1056,9 +1108,22 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       planningTools: planningInfo?.tools,
       planningReasoning: planningInfo?.reasoning?.substring(0, 50),
       hasToolCalls: hasToolCalls,
-      toolResultsCount: toolResults.length
+      toolResultsCount: toolResults.length,
+      useStreaming
     });
 
+    // Send response via SSE if streaming, otherwise use JSON
+    if (useStreaming) {
+      sendSSEEvent(res, 'response', {
+        message: finalContent,
+        toolResults: toolResults.length > 0 ? toolResults : undefined,
+      });
+      sendSSEEvent(res, 'done', {});
+      res.end();
+      return;
+    }
+
+    // Non-streaming response (backward compatible)
     const responseData = {
       message: finalContent,
       planning: planningInfo || undefined,
@@ -1073,10 +1138,27 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     
     // Handle Anthropic API errors
     if (error.status === 529 || error.message?.includes('overloaded') || error.message?.includes('Overloaded')) {
+      if (useStreaming) {
+        sendSSEEvent(res, 'error', {
+          error: 'Service temporarily unavailable',
+          message: 'The AI service is currently overloaded. Please try again in a few moments.'
+        });
+        res.end();
+        return;
+      }
       return res.status(503).json({
         error: 'Service temporarily unavailable',
         message: 'The AI service is currently overloaded. Please try again in a few moments.',
       });
+    }
+    
+    if (useStreaming) {
+      sendSSEEvent(res, 'error', {
+        error: 'Internal server error',
+        message: error.message || 'An error occurred while processing your request.'
+      });
+      res.end();
+      return;
     }
     
     return res.status(500).json({

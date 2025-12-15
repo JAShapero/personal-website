@@ -201,16 +201,14 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
         content: msg.text,
       }));
 
-      // Call the API endpoint
-      // When using 'vercel dev', the API is available at /api/chat
-      // When deployed, it's also at /api/chat
-      // If running just 'npm run dev', this will fail gracefully with a fallback message
-      const apiUrl = '/api/chat';
+      // Call the API endpoint with streaming enabled
+      const apiUrl = '/api/chat?stream=true';
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
         },
         body: JSON.stringify({
           messages: recentMessages,
@@ -223,59 +221,187 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get response');
+        // Try to parse error as JSON first
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to get response');
+        } catch {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
       }
 
-      const data = await response.json();
-      
-      console.log('Received API response:', {
-        hasPlanning: !!data.planning,
-        hasMessage: !!data.message,
-        messageLength: data.message?.length,
-        messagePreview: data.message?.substring(0, 100)
-      });
-      
-      // Add planning message FIRST (as soon as available) to show it immediately
-      if (data.planning && !planningAddedRef.current.has(planningKey)) {
-        planningAddedRef.current.add(planningKey);
-        const planningMessage: Message = {
-          id: planningKey,
-          text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
-          sender: 'planning',
-          timestamp: new Date(),
-          planning: data.planning
+      // Check if response is streaming (SSE)
+      const contentType = response.headers.get('content-type');
+      const isStreaming = contentType?.includes('text/event-stream');
+
+      if (isStreaming) {
+        // Handle SSE stream
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        
+        if (!reader) {
+          throw new Error('Stream reader not available');
+        }
+
+        let buffer = '';
+        let planningReceived = false;
+        let responseReceived = false;
+        const responseId = `response-${userMessage.id}`;
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+            // Parse SSE events - format: event: <type>\ndata: <json>\n\n
+            let currentEvent = '';
+            let currentData = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              
+              if (line.startsWith('event: ')) {
+                currentEvent = line.substring(7).trim();
+                continue;
+              }
+              
+              if (line.startsWith('data: ')) {
+                currentData = line.substring(6).trim();
+                // Check if next line is empty (end of SSE event block)
+                const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+                if (nextLine.trim() === '' || i === lines.length - 1) {
+                  // Process complete event
+                  if (currentEvent && currentData) {
+                    try {
+                      const data = JSON.parse(currentData);
+                      
+                      // Handle planning event
+                      if (currentEvent === 'planning' && !planningReceived) {
+                        planningReceived = true;
+                        if (!planningAddedRef.current.has(planningKey)) {
+                          planningAddedRef.current.add(planningKey);
+                          const planningMessage: Message = {
+                            id: planningKey,
+                            text: data.reasoning || `I'll use ${data.tools?.join(', ') || 'tools'} to answer this question.`,
+                            sender: 'planning',
+                            timestamp: new Date(),
+                            planning: { tools: data.tools || [], reasoning: data.reasoning || '' }
+                          };
+                          
+                          setMessages(prev => {
+                            if (prev.some(msg => msg.id === planningKey)) {
+                              return prev;
+                            }
+                            console.log('Adding planning message from stream:', planningKey);
+                            return [...prev, planningMessage];
+                          });
+                        }
+                      }
+                      
+                      // Handle response event
+                      if (currentEvent === 'response' && !responseReceived) {
+                        responseReceived = true;
+                        const assistantMessage: Message = {
+                          id: responseId,
+                          text: data.message && data.message.trim() 
+                            ? data.message 
+                            : 'Sorry, I encountered an error processing your request. Please try again.',
+                          sender: 'assistant',
+                          timestamp: new Date()
+                        };
+                        
+                        setMessages(prev => {
+                          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
+                            return prev;
+                          }
+                          console.log('Adding assistant message from stream:', responseId);
+                          return [...prev, assistantMessage];
+                        });
+                      }
+                      
+                      // Handle error event
+                      if (currentEvent === 'error') {
+                        const errorMessage: Message = {
+                          id: responseId,
+                          text: data.message || data.error || 'Sorry, I encountered an error processing your request.',
+                          sender: 'assistant',
+                          timestamp: new Date()
+                        };
+                        setMessages(prev => {
+                          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
+                            return prev;
+                          }
+                          return [...prev, errorMessage];
+                        });
+                        responseReceived = true;
+                      }
+                      
+                      // Handle done event
+                      if (currentEvent === 'done') {
+                        break;
+                      }
+                    } catch (e) {
+                      console.error('Error parsing SSE data:', e, 'Data:', currentData);
+                    }
+                  }
+                  
+                  // Reset for next event
+                  currentEvent = '';
+                  currentData = '';
+                }
+                continue;
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      } else {
+        // Fallback to non-streaming (backward compatible)
+        const data = await response.json();
+        
+        // Add planning message if available
+        if (data.planning && !planningAddedRef.current.has(planningKey)) {
+          planningAddedRef.current.add(planningKey);
+          const planningMessage: Message = {
+            id: planningKey,
+            text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
+            sender: 'planning',
+            timestamp: new Date(),
+            planning: data.planning
+          };
+          
+          setMessages(prev => {
+            if (prev.some(msg => msg.id === planningKey)) {
+              return prev;
+            }
+            return [...prev, planningMessage];
+          });
+        }
+        
+        // Add assistant message
+        const responseId = `response-${userMessage.id}`;
+        const assistantMessage: Message = {
+          id: responseId,
+          text: (data.message && data.message.trim()) 
+            ? data.message 
+            : 'Sorry, I encountered an error processing your request. Please try again.',
+          sender: 'assistant',
+          timestamp: new Date()
         };
         
         setMessages(prev => {
-          // Double-check we don't already have this planning message
-          if (prev.some(msg => msg.id === planningKey)) {
+          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
             return prev;
           }
-          console.log('Adding planning message immediately:', planningKey);
-          return [...prev, planningMessage];
+          return [...prev, assistantMessage];
         });
       }
-      
-      // Then add assistant message (keep loading state visible until this is added)
-      const responseId = `response-${userMessage.id}`;
-      const assistantMessage: Message = {
-        id: responseId,
-        text: (data.message && data.message.trim()) 
-          ? data.message 
-          : 'Sorry, I encountered an error processing your request. Please try again.',
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => {
-        // Check if we already have this response message
-        if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
-          return prev;
-        }
-        console.log('Adding assistant message:', responseId);
-        return [...prev, assistantMessage];
-      });
     } catch (error: any) {
       console.error('Chat error:', error);
       
