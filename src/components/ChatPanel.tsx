@@ -229,6 +229,13 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
       const data = await response.json();
       
+      console.log('Received API response:', {
+        hasPlanning: !!data.planning,
+        hasMessage: !!data.message,
+        messageLength: data.message?.length,
+        messagePreview: data.message?.substring(0, 100)
+      });
+      
       // Batch all updates together to prevent race conditions and duplicates
       setMessages(prev => {
         const newMessages = [...prev];
@@ -237,7 +244,9 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
         if (data.planning && !planningAddedRef.current.has(planningKey)) {
           planningAddedRef.current.add(planningKey);
           // Check if planning message already exists in current messages
-          if (!newMessages.some(msg => msg.id === planningKey)) {
+          const hasPlanning = newMessages.some(msg => msg.id === planningKey);
+          if (!hasPlanning) {
+            console.log('Adding planning message:', planningKey);
             const planningMessage: Message = {
               id: planningKey,
               text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
@@ -246,13 +255,17 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
               planning: data.planning
             };
             newMessages.push(planningMessage);
+          } else {
+            console.log('Planning message already exists, skipping');
           }
         }
         
         // Always add assistant message - this should always happen
         // Check if we already have a response for this user message
         const responseId = `response-${userMessage.id}`;
-        if (!newMessages.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
+        const hasResponse = newMessages.some(msg => msg.id === responseId && msg.sender === 'assistant');
+        if (!hasResponse) {
+          console.log('Adding assistant message:', responseId);
           const assistantMessage: Message = {
             id: responseId,
             text: (data.message && data.message.trim()) 
@@ -262,6 +275,8 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
             timestamp: new Date()
           };
           newMessages.push(assistantMessage);
+        } else {
+          console.log('Assistant message already exists, skipping');
         }
         
         return newMessages;
