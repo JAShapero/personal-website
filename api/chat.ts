@@ -207,13 +207,13 @@ function getWidgetContext(widget: string | null): string {
 const tools = [
   {
     name: 'get_about_info',
-    description: 'Get information about Jeremy\'s background, career, skills, interests, and personal details from the About Me document. Use this tool when asked about: career, work experience, job history, product management, skills, expertise, background, bio, personal information, location, interests, hobbies, education, or professional experience.',
+    description: 'Get information about Jeremy\'s background, career, skills, interests, and personal details from the About Me document. Use this tool when asked about: career, work experience, job history, product management, skills, expertise, background, bio, personal information, location, interests, hobbies, sports, basketball, athletics, favorite teams, music, family, education, or professional experience.',
     input_schema: {
       type: 'object' as const,
       properties: {
         query: {
           type: 'string' as const,
-          description: 'What information to search for (e.g., "career", "skills", "hobbies", "location")',
+          description: 'What information to search for (e.g., "career", "skills", "hobbies", "sports", "basketball", "location")',
         },
       },
       required: ['query'],
@@ -362,7 +362,7 @@ CRITICAL: Keep responses SHORT and CONCISE. Aim for 1-3 sentences maximum. Get s
 PERSONALITY & TONE:
 - Be casual and slightly playful, but professional
 - Be friendly, helpful, and conversational
-- Use light internet slang naturally (lol, brb, btw) but don't overdo it
+- Use light internet slang naturally (lol, brb, btw) but don't overdo it and don't use it when discussing career or professional topics
 - Be knowledgeable about yourself but humble
 - Occasionally playful/self-aware about being an AI
 - Be honest if you don't know something
@@ -531,6 +531,7 @@ If a tool call fails or data isn't available, gracefully explain that the inform
 
     // Check if we have tool calls - if so, we need to process them and get a follow-up response
     const hasToolCalls = toolCalls.length > 0;
+    let followUpResponse: any;
     
     if (!hasToolCalls && response.content[0].type === 'text') {
       // Simple text response, no tools needed
@@ -1031,7 +1032,6 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       }
 
       // Make a follow-up call with tool results
-      let followUpResponse;
       try {
         followUpResponse = await retryWithBackoff(async () => {
           return await anthropic.messages.create({
