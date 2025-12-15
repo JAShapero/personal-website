@@ -71,10 +71,12 @@ BA with honors in Psychology and English (September 2009 - May 2013)
 
 ## Personal Interests & Fun Facts
 
-### Sports & Entertainment
+### Basketball
 - Born and raised in Cleveland—big Cleveland sports fan, especially the Cavs
 - Cried when LeBron left, cried harder when LeBron came back
 - LeBron is the GOAT
+
+### TV
 - Favorite show is Adventure Time
 
 ### Music
