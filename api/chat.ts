@@ -1032,8 +1032,17 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     
     // Ensure we always have content
     if (!finalContent || finalContent.trim() === '') {
+      console.error('Empty finalContent - response:', response.content, 'followUpResponse:', followUpResponse?.content);
       finalContent = 'I encountered an issue processing your request. Please try again.';
     }
+
+    // Log for debugging
+    console.log('Returning response:', {
+      hasMessage: !!finalContent,
+      messageLength: finalContent?.length,
+      hasPlanning: !!planningInfo,
+      planningTools: planningInfo?.tools
+    });
 
     return res.status(200).json({
       message: finalContent,

@@ -135,6 +135,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 600);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const planningAddedRef = useRef<Set<string>>(new Set());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
@@ -191,6 +192,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
+    const planningKey = `planning-${userMessage.id}`;
 
     try {
       // Get conversation history (last 10 messages for context, including the one we just added)
@@ -227,41 +229,39 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
       const data = await response.json();
       
-      // Add planning message if available (only once, check for duplicates)
-      if (data.planning) {
+      // Add planning message if available (only once using Set check)
+      if (data.planning && !planningAddedRef.current.has(planningKey)) {
+        planningAddedRef.current.add(planningKey);
+        const planningMessage: Message = {
+          id: planningKey,
+          text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
+          sender: 'planning',
+          timestamp: new Date(),
+          planning: data.planning
+        };
         setMessages(prev => {
-          // Check if we already have a planning message after the last user message
-          const lastUserMessageIndex = prev.map((m, i) => m.sender === 'user' ? i : -1).filter(i => i >= 0).pop();
-          const hasPlanningAfterUser = lastUserMessageIndex !== undefined && 
-            prev.slice(lastUserMessageIndex + 1).some(msg => msg.sender === 'planning' && msg.id === `planning-${userMessage.id}`);
-          
-          if (!hasPlanningAfterUser) {
-            const planningMessage: Message = {
-              id: `planning-${userMessage.id}`,
-              text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
-              sender: 'planning',
-              timestamp: new Date(),
-              planning: data.planning
-            };
-            return [...prev, planningMessage];
+          // Double-check we don't already have this planning message
+          if (prev.some(msg => msg.id === planningKey)) {
+            return prev;
           }
-          return prev;
+          return [...prev, planningMessage];
         });
       }
       
-      // Add assistant message if we have actual content (keep loading state until this is added)
+      // Always add assistant message - this should always happen
+      // The loading state will remain until this is added and finally block runs
       if (data.message && data.message.trim()) {
         const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: `response-${Date.now()}`,
           text: data.message,
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, assistantMessage]);
-      } else if (!data.message || !data.message.trim()) {
+      } else {
         // If no message, add an error message
         const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: `response-${Date.now()}`,
           text: 'Sorry, I encountered an error processing your request. Please try again.',
           sender: 'assistant',
           timestamp: new Date()
