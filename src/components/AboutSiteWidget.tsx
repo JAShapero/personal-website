@@ -63,8 +63,8 @@ export function AboutSiteWidget({ isActive, onClick, className = '' }: AboutSite
         {view === 'about' ? (
           <div className="space-y-3">
             <p>Playground to experiment with AI.</p>
-            <p>Active widget sets chat context (e.g., "about", "music")</p>
-            <p>Chat uses Claude with tool calling to fetch static data (e.g., about-me.md) and Live Data (e.g., Spotify and Strava APIs) to discuss the topic.</p>
+            <p>Active widget sets chat context (e.g., "about", "music"). If no widget selected, planning agent will determine which tools to use.</p>
+            <p>Chat uses Claude with tool calling to fetch static data (e.g., about-me.md) and live data (e.g., Spotify and Strava APIs) to discuss the topic.</p>
           </div>
         ) : (
           <div className="space-y-3">
