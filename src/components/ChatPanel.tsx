@@ -261,36 +261,30 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
           while (true) {
             const { done, value } = await reader.read();
             
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-            // Parse SSE events - format: event: <type>\ndata: <json>\n\n
-            let currentEvent = '';
-            let currentData = '';
-            
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i];
-              
-              if (line.startsWith('event: ')) {
-                currentEvent = line.substring(7).trim();
-                continue;
-              }
-              
-              if (line.startsWith('data: ')) {
-                currentData = line.substring(6).trim();
-                // Check if next line is empty (end of SSE event block)
-                const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
-                if (nextLine.trim() === '' || i === lines.length - 1) {
-                  // Process complete event
-                  if (currentEvent && currentData) {
+            if (done) {
+              // Process any remaining buffer content before breaking
+              if (buffer.trim()) {
+                const eventBlocks = buffer.split('\n\n');
+                for (const block of eventBlocks) {
+                  if (!block.trim()) continue;
+                  
+                  const lines = block.split('\n');
+                  let eventType = '';
+                  let eventData = '';
+                  
+                  for (const line of lines) {
+                    if (line.startsWith('event: ')) {
+                      eventType = line.substring(7).trim();
+                    } else if (line.startsWith('data: ')) {
+                      eventData = line.substring(6).trim();
+                    }
+                  }
+                  
+                  if (eventType && eventData) {
                     try {
-                      const data = JSON.parse(currentData);
+                      const data = JSON.parse(eventData);
                       
-                      // Handle planning event
-                      if (currentEvent === 'planning' && !planningReceived) {
+                      if (eventType === 'planning' && !planningReceived) {
                         planningReceived = true;
                         if (!planningAddedRef.current.has(planningKey)) {
                           planningAddedRef.current.add(planningKey);
@@ -301,19 +295,15 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
                             timestamp: new Date(),
                             planning: { tools: data.tools || [], reasoning: data.reasoning || '' }
                           };
-                          
                           setMessages(prev => {
-                            if (prev.some(msg => msg.id === planningKey)) {
-                              return prev;
-                            }
+                            if (prev.some(msg => msg.id === planningKey)) return prev;
                             console.log('Adding planning message from stream:', planningKey);
                             return [...prev, planningMessage];
                           });
                         }
                       }
                       
-                      // Handle response event
-                      if (currentEvent === 'response' && !responseReceived) {
+                      if (eventType === 'response' && !responseReceived) {
                         responseReceived = true;
                         const assistantMessage: Message = {
                           id: responseId,
@@ -323,18 +313,14 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
                           sender: 'assistant',
                           timestamp: new Date()
                         };
-                        
                         setMessages(prev => {
-                          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
-                            return prev;
-                          }
-                          console.log('Adding assistant message from stream:', responseId);
+                          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) return prev;
+                          console.log('Adding assistant message from stream:', responseId, 'Message length:', data.message?.length);
                           return [...prev, assistantMessage];
                         });
                       }
                       
-                      // Handle error event
-                      if (currentEvent === 'error') {
+                      if (eventType === 'error') {
                         const errorMessage: Message = {
                           id: responseId,
                           text: data.message || data.error || 'Sorry, I encountered an error processing your request.',
@@ -342,33 +328,121 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
                           timestamp: new Date()
                         };
                         setMessages(prev => {
-                          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
-                            return prev;
-                          }
+                          if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) return prev;
                           return [...prev, errorMessage];
                         });
                         responseReceived = true;
                       }
-                      
-                      // Handle done event
-                      if (currentEvent === 'done') {
-                        break;
-                      }
                     } catch (e) {
-                      console.error('Error parsing SSE data:', e, 'Data:', currentData);
+                      console.error('Error parsing SSE data:', e, 'Event:', eventType, 'Data:', eventData);
+                    }
+                  }
+                }
+              }
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Process complete SSE events (events end with \n\n)
+            const eventBlocks = buffer.split('\n\n');
+            // Keep the last incomplete block in buffer
+            buffer = eventBlocks.pop() || '';
+
+            // Process each complete event block
+            for (const block of eventBlocks) {
+              if (!block.trim()) continue;
+              
+              const lines = block.split('\n');
+              let eventType = '';
+              let eventData = '';
+              
+              for (const line of lines) {
+                if (line.startsWith('event: ')) {
+                  eventType = line.substring(7).trim();
+                } else if (line.startsWith('data: ')) {
+                  eventData = line.substring(6).trim();
+                }
+              }
+              
+              if (eventType && eventData) {
+                try {
+                  const data = JSON.parse(eventData);
+                  
+                  if (eventType === 'planning' && !planningReceived) {
+                    planningReceived = true;
+                    if (!planningAddedRef.current.has(planningKey)) {
+                      planningAddedRef.current.add(planningKey);
+                      const planningMessage: Message = {
+                        id: planningKey,
+                        text: data.reasoning || `I'll use ${data.tools?.join(', ') || 'tools'} to answer this question.`,
+                        sender: 'planning',
+                        timestamp: new Date(),
+                        planning: { tools: data.tools || [], reasoning: data.reasoning || '' }
+                      };
+                      setMessages(prev => {
+                        if (prev.some(msg => msg.id === planningKey)) return prev;
+                        console.log('Adding planning message from stream:', planningKey);
+                        return [...prev, planningMessage];
+                      });
                     }
                   }
                   
-                  // Reset for next event
-                  currentEvent = '';
-                  currentData = '';
+                  if (eventType === 'response' && !responseReceived) {
+                    responseReceived = true;
+                    const assistantMessage: Message = {
+                      id: responseId,
+                      text: data.message && data.message.trim() 
+                        ? data.message 
+                        : 'Sorry, I encountered an error processing your request. Please try again.',
+                      sender: 'assistant',
+                      timestamp: new Date()
+                    };
+                    setMessages(prev => {
+                      if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) return prev;
+                      console.log('Adding assistant message from stream:', responseId, 'Message length:', data.message?.length);
+                      return [...prev, assistantMessage];
+                    });
+                  }
+                  
+                  if (eventType === 'error') {
+                    const errorMessage: Message = {
+                      id: responseId,
+                      text: data.message || data.error || 'Sorry, I encountered an error processing your request.',
+                      sender: 'assistant',
+                      timestamp: new Date()
+                    };
+                    setMessages(prev => {
+                      if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) return prev;
+                      return [...prev, errorMessage];
+                    });
+                    responseReceived = true;
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e, 'Event:', eventType, 'Data:', eventData);
                 }
-                continue;
               }
             }
           }
+          
+          // If we didn't receive a response, add an error message
+          if (!responseReceived) {
+            console.error('Stream ended without receiving response event');
+            const errorMessage: Message = {
+              id: responseId,
+              text: 'Sorry, I encountered an error processing your request. The response was not received.',
+              sender: 'assistant',
+              timestamp: new Date()
+            };
+            setMessages(prev => {
+              if (prev.some(msg => msg.id === responseId && msg.sender === 'assistant')) return prev;
+              return [...prev, errorMessage];
+            });
+          }
         } finally {
           reader.releaseLock();
+          // Only set loading to false after we've processed the stream
+          setIsTyping(false);
         }
       } else {
         // Fallback to non-streaming (backward compatible)
