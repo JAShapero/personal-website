@@ -195,11 +195,18 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
     const planningKey = `planning-${userMessage.id}`;
 
     try {
+      // Filter out planning messages - Claude only accepts 'user' or 'assistant' roles
+      const filterMessages = (msgs: Message[]) => 
+        msgs.filter(msg => msg.sender === 'user' || msg.sender === 'assistant');
+      
       // Get conversation history (last 10 messages for context, including the one we just added)
-      const recentMessages = [...messages, userMessage].slice(-10).map(msg => ({
-        role: msg.sender as 'user' | 'assistant',
-        content: msg.text,
-      }));
+      // Exclude planning messages as Claude doesn't support that role
+      const recentMessages = filterMessages([...messages, userMessage])
+        .slice(-10)
+        .map(msg => ({
+          role: msg.sender as 'user' | 'assistant',
+          content: msg.text,
+        }));
 
       // Call the API endpoint with streaming enabled
       const apiUrl = '/api/chat?stream=true';
@@ -213,10 +220,12 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
         body: JSON.stringify({
           messages: recentMessages,
           activeWidget,
-          conversationHistory: messages.slice(-10).map(msg => ({
-            role: msg.sender as 'user' | 'assistant',
-            content: msg.text,
-          })),
+          conversationHistory: filterMessages(messages)
+            .slice(-10)
+            .map(msg => ({
+              role: msg.sender as 'user' | 'assistant',
+              content: msg.text,
+            })),
         }),
       });
 
