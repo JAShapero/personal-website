@@ -588,7 +588,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
                     <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Planning</span>
                   </div>
                 )}
-                <p className="text-sm">{message.text}</p>
+                <div className="text-sm whitespace-pre-wrap">{message.text}</div>
               </div>
             </motion.div>
           ))}
