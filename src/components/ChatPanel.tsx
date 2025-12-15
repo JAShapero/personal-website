@@ -645,33 +645,22 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
               ))
             ) : (
               <>
-                <motion.button
-                  type="button"
-                  onClick={() => handleSuggestionClick("What are your areas of expertise?")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  What are your areas of expertise?
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={() => handleSuggestionClick("What outdoor activities do you do?")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  What outdoor activities do you do?
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={() => handleSuggestionClick("What are you currently listening to?")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  What are you currently listening to?
-                </motion.button>
+                {[
+                  "How does the chat work?",
+                  "What's your PM experience?",
+                  "What mountains did you snowboard last season?"
+                ].map((prompt, index) => (
+                  <motion.button
+                    key={index}
+                    type="button"
+                    onClick={() => handleSuggestionClick(prompt)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+                  >
+                    {prompt}
+                  </motion.button>
+                ))}
               </>
             )}
           </div>
