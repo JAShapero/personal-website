@@ -229,45 +229,43 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
       const data = await response.json();
       
-      // Add planning message if available (only once using Set check)
-      if (data.planning && !planningAddedRef.current.has(planningKey)) {
-        planningAddedRef.current.add(planningKey);
-        const planningMessage: Message = {
-          id: planningKey,
-          text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
-          sender: 'planning',
-          timestamp: new Date(),
-          planning: data.planning
-        };
-        setMessages(prev => {
-          // Double-check we don't already have this planning message
-          if (prev.some(msg => msg.id === planningKey)) {
-            return prev;
+      // Batch all updates together to prevent race conditions and duplicates
+      setMessages(prev => {
+        const newMessages = [...prev];
+        
+        // Add planning message if available (only once)
+        if (data.planning && !planningAddedRef.current.has(planningKey)) {
+          planningAddedRef.current.add(planningKey);
+          // Check if planning message already exists in current messages
+          if (!newMessages.some(msg => msg.id === planningKey)) {
+            const planningMessage: Message = {
+              id: planningKey,
+              text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
+              sender: 'planning',
+              timestamp: new Date(),
+              planning: data.planning
+            };
+            newMessages.push(planningMessage);
           }
-          return [...prev, planningMessage];
-        });
-      }
-      
-      // Always add assistant message - this should always happen
-      // The loading state will remain until this is added and finally block runs
-      if (data.message && data.message.trim()) {
-        const assistantMessage: Message = {
-          id: `response-${Date.now()}`,
-          text: data.message,
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-      } else {
-        // If no message, add an error message
-        const errorMessage: Message = {
-          id: `response-${Date.now()}`,
-          text: 'Sorry, I encountered an error processing your request. Please try again.',
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      }
+        }
+        
+        // Always add assistant message - this should always happen
+        // Check if we already have a response for this user message
+        const responseId = `response-${userMessage.id}`;
+        if (!newMessages.some(msg => msg.id === responseId && msg.sender === 'assistant')) {
+          const assistantMessage: Message = {
+            id: responseId,
+            text: (data.message && data.message.trim()) 
+              ? data.message 
+              : 'Sorry, I encountered an error processing your request. Please try again.',
+            sender: 'assistant',
+            timestamp: new Date()
+          };
+          newMessages.push(assistantMessage);
+        }
+        
+        return newMessages;
+      });
     } catch (error: any) {
       console.error('Chat error:', error);
       

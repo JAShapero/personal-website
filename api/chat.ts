@@ -462,10 +462,14 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       }
     }
 
-    if (response.content[0].type === 'text') {
+    // Check if we have tool calls - if so, we need to process them and get a follow-up response
+    const hasToolCalls = toolCalls.length > 0;
+    
+    if (!hasToolCalls && response.content[0].type === 'text') {
+      // Simple text response, no tools needed
       finalContent = response.content[0].text;
-    } else if (response.content[0].type === 'tool_use') {
-      // Process tool calls
+    } else if (hasToolCalls) {
+      // Process tool calls and get follow-up response
       
       for (const toolCall of toolCalls) {
         let toolResult: any;
@@ -1013,21 +1017,28 @@ If a tool call fails or data isn't available, gracefully explain that the inform
         throw apiError;
       }
 
-      if (!followUpResponse.content || followUpResponse.content.length === 0) {
+      // Process follow-up response
+      if (!followUpResponse || !followUpResponse.content || followUpResponse.content.length === 0) {
+        console.error('Empty followUpResponse');
         finalContent = 'I encountered an issue processing your request. Please try again.';
       } else {
         // Find the first text content in the response
         const textContent = followUpResponse.content.find((item: any) => item.type === 'text');
-        if (textContent && textContent.text) {
+        if (textContent && textContent.text && textContent.text.trim()) {
           finalContent = textContent.text;
         } else {
           // If no text content, try to extract from any content
-          finalContent = followUpResponse.content[0]?.text || 'I encountered an issue processing your request.';
+          const anyText = followUpResponse.content.find((item: any) => item.text);
+          finalContent = anyText?.text || 'I encountered an issue processing your request. Please try again.';
         }
       }
     } else {
       // No tool calls, use the text response directly
-      finalContent = response.content[0].text;
+      if (response.content[0] && response.content[0].type === 'text') {
+        finalContent = response.content[0].text;
+      } else {
+        finalContent = 'I encountered an issue processing your request. Please try again.';
+      }
     }
     
     // Ensure we always have content
