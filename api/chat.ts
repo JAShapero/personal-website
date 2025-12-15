@@ -1051,15 +1051,23 @@ If a tool call fails or data isn't available, gracefully explain that the inform
     console.log('Returning response:', {
       hasMessage: !!finalContent,
       messageLength: finalContent?.length,
+      messagePreview: finalContent?.substring(0, 100),
       hasPlanning: !!planningInfo,
-      planningTools: planningInfo?.tools
+      planningTools: planningInfo?.tools,
+      planningReasoning: planningInfo?.reasoning?.substring(0, 50),
+      hasToolCalls: hasToolCalls,
+      toolResultsCount: toolResults.length
     });
 
-    return res.status(200).json({
+    const responseData = {
       message: finalContent,
       planning: planningInfo || undefined,
       toolResults: toolResults.length > 0 ? toolResults : undefined,
-    });
+    };
+
+    console.log('Response data structure:', JSON.stringify(responseData, null, 2).substring(0, 500));
+
+    return res.status(200).json(responseData);
   } catch (error: any) {
     console.error('Chat API error:', error);
     
