@@ -227,26 +227,47 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
 
       const data = await response.json();
       
-      // Add planning message if available
+      // Add planning message if available (only once, check for duplicates)
       if (data.planning) {
-        const planningMessage: Message = {
-          id: `planning-${Date.now()}`,
-          text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
-          sender: 'planning',
-          timestamp: new Date(),
-          planning: data.planning
-        };
-        setMessages(prev => [...prev, planningMessage]);
+        setMessages(prev => {
+          // Check if we already have a planning message after the last user message
+          const lastUserMessageIndex = prev.map((m, i) => m.sender === 'user' ? i : -1).filter(i => i >= 0).pop();
+          const hasPlanningAfterUser = lastUserMessageIndex !== undefined && 
+            prev.slice(lastUserMessageIndex + 1).some(msg => msg.sender === 'planning' && msg.id === `planning-${userMessage.id}`);
+          
+          if (!hasPlanningAfterUser) {
+            const planningMessage: Message = {
+              id: `planning-${userMessage.id}`,
+              text: data.planning.reasoning || `I'll use ${data.planning.tools.join(', ')} to answer this question.`,
+              sender: 'planning',
+              timestamp: new Date(),
+              planning: data.planning
+            };
+            return [...prev, planningMessage];
+          }
+          return prev;
+        });
       }
       
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message || 'Sorry, I encountered an error.',
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
+      // Add assistant message if we have actual content (keep loading state until this is added)
+      if (data.message && data.message.trim()) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.message,
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } else if (!data.message || !data.message.trim()) {
+        // If no message, add an error message
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: 'Sorry, I encountered an error processing your request. Please try again.',
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
     } catch (error: any) {
       console.error('Chat error:', error);
       

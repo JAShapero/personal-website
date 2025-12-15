@@ -1015,13 +1015,24 @@ If a tool call fails or data isn't available, gracefully explain that the inform
 
       if (!followUpResponse.content || followUpResponse.content.length === 0) {
         finalContent = 'I encountered an issue processing your request. Please try again.';
-      } else if (followUpResponse.content[0].type === 'text') {
-        finalContent = followUpResponse.content[0].text;
       } else {
-        finalContent = 'I encountered an issue processing your request.';
+        // Find the first text content in the response
+        const textContent = followUpResponse.content.find((item: any) => item.type === 'text');
+        if (textContent && textContent.text) {
+          finalContent = textContent.text;
+        } else {
+          // If no text content, try to extract from any content
+          finalContent = followUpResponse.content[0]?.text || 'I encountered an issue processing your request.';
+        }
       }
     } else {
-      finalContent = 'I encountered an issue processing your request.';
+      // No tool calls, use the text response directly
+      finalContent = response.content[0].text;
+    }
+    
+    // Ensure we always have content
+    if (!finalContent || finalContent.trim() === '') {
+      finalContent = 'I encountered an issue processing your request. Please try again.';
     }
 
     return res.status(200).json({
