@@ -668,7 +668,7 @@ export function ChatPanel({ activeWidget, headerHeight = 0 }: ChatPanelProps) {
       )}
 
       {/* Input */}
-      <form onSubmit={sendMessage} className={`px-4 pb-3 ${showSuggestions && messages.length <= 1 ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`} style={{ paddingBottom: '0.75rem' }}>
+      <form onSubmit={sendMessage} className={`px-4 pb-4 ${showSuggestions && messages.length <= 1 ? 'pt-0' : 'pt-4 border-t border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800`}>
         <div className="flex gap-2">
           <input
             type="text"
