@@ -69,7 +69,7 @@ export function AboutSiteWidget({ isActive, onClick, className = '' }: AboutSite
         ) : (
           <div className="space-y-3">
             <ol className="space-y-2 pl-5" style={{ listStyleType: 'decimal', listStylePosition: 'outside' }}>
-              <li>Planning agent and automatic tool routing</li>
+              <li>Improve planning agent and automatic tool routing</li>
               <li>Retry logic</li>
               <li>Improve response format, quality and vibe</li>
               <li>Mobile responsiveness 😅</li>
