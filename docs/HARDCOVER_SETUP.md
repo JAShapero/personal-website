@@ -156,3 +156,4 @@ If you encounter issues:
 3. Make sure your Hardcover account has books marked as "currently reading"
 4. Check that books have page information for progress tracking
 
+

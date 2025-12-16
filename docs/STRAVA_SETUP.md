@@ -211,3 +211,4 @@ https://www.strava.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=co
 
 **Required Scopes**: `activity:read_all` (to read your activity data)
 
+

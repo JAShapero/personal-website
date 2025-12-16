@@ -39,3 +39,4 @@ If Vercel isn't detecting new commits, the GitHub webhook isn't set up correctly
 - Vercel should automatically detect new commits
 - Check Deployments tab to verify it's using latest commits
 
+
