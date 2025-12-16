@@ -11,7 +11,7 @@ A personal website featuring interactive widgets with an AI-powered chat. Built 
 - **AI Chat System**: Intelligent chat powered by Claude API with automatic tool routing and multi-source data synthesis
 - **Drag & Drop**: Rearrangeable widgets with position persistence
 - **Dark/Light Theme**: Beautiful theme toggle with system preference support
-- **API Integrations**: Spotify, Strava, Hardcover (optional), and Claude (required)
+- **API Integrations**: Spotify, Strava, Hardcover (optional), LangSmith (optional), and Claude (required)
 
 ## Quick Start
 
