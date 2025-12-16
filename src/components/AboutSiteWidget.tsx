@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Code } from 'lucide-react';
+import { Code, Github } from 'lucide-react';
 
 interface AboutSiteWidgetProps {
   isActive: boolean;
@@ -32,6 +32,16 @@ export function AboutSiteWidget({ isActive, onClick, className = '' }: AboutSite
           <Code className="w-5 h-5 text-green-600 dark:text-green-400" />
         </div>
         <h3 className="text-gray-900 dark:text-gray-100 flex-1">About this site</h3>
+        <a
+          href="https://github.com/JAShapero/personal-website"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          aria-label="View on GitHub"
+        >
+          <Github className="w-5 h-5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" />
+        </a>
       </div>
 
       {/* Toggle */}
