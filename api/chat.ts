@@ -3,6 +3,17 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { retryWithBackoff } from './retry';
+import { 
+  generateRequestId, 
+  logInfo, 
+  logError, 
+  logToolCall, 
+  logToolError,
+  logClaudeRequest,
+  logClaudeResponse,
+  logStreamEvent,
+  logPerformance
+} from './logger';
 
 // Read data files
 function readDataFile(filename: string): string {
@@ -332,8 +343,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
   }
 
+  // Generate request ID for tracing
+  const requestId = generateRequestId();
+  const startTime = Date.now();
+
   try {
     const { messages, activeWidget, conversationHistory = [] } = req.body as ChatRequest;
+
+    // Log request received
+    logInfo('Chat request received', {
+      requestId,
+      activeWidget: activeWidget || 'none',
+      messageCount: messages.length,
+      conversationHistoryLength: conversationHistory.length,
+      useStreaming,
+    });
 
     if (!process.env.ANTHROPIC_API_KEY) {
       if (useStreaming) {
@@ -404,7 +428,15 @@ If a tool call fails or data isn't available, gracefully explain that the inform
 
     // Call Claude API with retry logic
     let response;
+    const apiCallStartTime = Date.now();
+    
     try {
+      // Log Claude API request
+      logClaudeRequest(allMessages, tools, {
+        requestId,
+        activeWidget: activeWidget || 'none',
+      });
+
       response = await retryWithBackoff(async () => {
         return await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
@@ -430,7 +462,21 @@ If a tool call fails or data isn't available, gracefully explain that the inform
                  error.message?.includes('Overloaded');
         },
       });
+
+      // Log Claude API response
+      const apiCallDuration = Date.now() - apiCallStartTime;
+      logClaudeResponse(response, apiCallDuration, {
+        requestId,
+        activeWidget: activeWidget || 'none',
+      });
     } catch (apiError: any) {
+      // Log API error
+      logError('Claude API error', apiError, {
+        requestId,
+        activeWidget: activeWidget || 'none',
+        apiCallDuration: Date.now() - apiCallStartTime,
+      });
+
       // Handle Anthropic API errors
       if (apiError.status === 529 || apiError.message?.includes('overloaded') || apiError.message?.includes('Overloaded')) {
         return res.status(503).json({
@@ -505,6 +551,10 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       
       // Send planning event immediately via SSE if streaming
       if (useStreaming && planningInfo) {
+        logStreamEvent('planning', planningInfo, {
+          requestId,
+          activeWidget: activeWidget || 'none',
+        });
         sendSSEEvent(res, 'planning', planningInfo);
       }
     } else if (textContent && textContent.text) {
@@ -523,6 +573,10 @@ If a tool call fails or data isn't available, gracefully explain that the inform
         
         // Send planning event immediately via SSE if streaming
         if (useStreaming && planningInfo) {
+          logStreamEvent('planning', planningInfo, {
+            requestId,
+            activeWidget: activeWidget || 'none',
+          });
           sendSSEEvent(res, 'planning', planningInfo);
         }
       }
@@ -540,6 +594,7 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       
       for (const toolCall of toolCalls) {
         let toolResult: any;
+        const toolStartTime = Date.now();
         
         try {
           switch (toolCall.name) {
@@ -1021,17 +1076,48 @@ If a tool call fails or data isn't available, gracefully explain that the inform
               };
           }
         } catch (error: any) {
+          const toolDuration = Date.now() - toolStartTime;
+          logToolError(toolCall.name, toolCall.input, error, {
+            requestId,
+            activeWidget: activeWidget || 'none',
+          });
+          
           toolResult = {
             tool_use_id: toolCall.id,
             content: `Error: ${error.message}`,
           };
         }
         
+        // Log successful tool call
+        const toolDuration = Date.now() - toolStartTime;
+        logToolCall(
+          toolCall.name,
+          toolCall.input,
+          toolResult.content,
+          toolDuration,
+          {
+            requestId,
+            activeWidget: activeWidget || 'none',
+          }
+        );
+        
         toolResults.push(toolResult);
       }
 
       // Make a follow-up call with tool results
+      const followUpStartTime = Date.now();
       try {
+        logClaudeRequest(
+          [...allMessages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })), { role: 'assistant', content: response.content }, { role: 'user', content: toolResults }],
+          undefined,
+          {
+            requestId,
+            activeWidget: activeWidget || 'none',
+            type: 'follow_up',
+            toolResultsCount: toolResults.length,
+          }
+        );
+
         followUpResponse = await retryWithBackoff(async () => {
           return await anthropic.messages.create({
           model: 'claude-sonnet-4-20250514',
@@ -1071,7 +1157,20 @@ If a tool call fails or data isn't available, gracefully explain that the inform
                    error.message?.includes('Overloaded');
           },
         });
+
+        const followUpDuration = Date.now() - followUpStartTime;
+        logClaudeResponse(followUpResponse, followUpDuration, {
+          requestId,
+          activeWidget: activeWidget || 'none',
+          type: 'follow_up',
+        });
       } catch (apiError: any) {
+        logError('Claude API follow-up error', apiError, {
+          requestId,
+          activeWidget: activeWidget || 'none',
+          followUpDuration: Date.now() - followUpStartTime,
+        });
+
         // Handle Anthropic API errors
         if (apiError.status === 529 || apiError.message?.includes('overloaded') || apiError.message?.includes('Overloaded')) {
           if (useStreaming) {
@@ -1121,24 +1220,43 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       finalContent = 'I encountered an issue processing your request. Please try again.';
     }
 
-    // Log for debugging
-    console.log('Returning response:', {
+    // Log response summary
+    const totalDuration = Date.now() - startTime;
+    logPerformance({
+      totalDuration,
+      apiCallDuration: Date.now() - apiCallStartTime,
+      toolExecutionDuration: toolResults.length > 0 ? totalDuration - (Date.now() - apiCallStartTime) : undefined,
+    }, {
+      requestId,
+      activeWidget: activeWidget || 'none',
+    });
+
+    logInfo('Chat response ready', {
+      requestId,
+      activeWidget: activeWidget || 'none',
       hasMessage: !!finalContent,
       messageLength: finalContent?.length,
-      messagePreview: finalContent?.substring(0, 100),
       hasPlanning: !!planningInfo,
       planningTools: planningInfo?.tools,
-      planningReasoning: planningInfo?.reasoning?.substring(0, 50),
-      hasToolCalls: hasToolCalls,
+      hasToolCalls,
       toolResultsCount: toolResults.length,
-      useStreaming
+      useStreaming,
+      totalDuration,
     });
 
     // Send response via SSE if streaming, otherwise use JSON
     if (useStreaming) {
+      logStreamEvent('response', { messageLength: finalContent.length }, {
+        requestId,
+        activeWidget: activeWidget || 'none',
+      });
       sendSSEEvent(res, 'response', {
         message: finalContent,
         toolResults: toolResults.length > 0 ? toolResults : undefined,
+      });
+      logStreamEvent('done', {}, {
+        requestId,
+        activeWidget: activeWidget || 'none',
       });
       sendSSEEvent(res, 'done', {});
       res.end();
@@ -1152,11 +1270,13 @@ If a tool call fails or data isn't available, gracefully explain that the inform
       toolResults: toolResults.length > 0 ? toolResults : undefined,
     };
 
-    console.log('Response data structure:', JSON.stringify(responseData, null, 2).substring(0, 500));
-
     return res.status(200).json(responseData);
   } catch (error: any) {
-    console.error('Chat API error:', error);
+    const totalDuration = Date.now() - startTime;
+    logError('Chat API error', error, {
+      requestId,
+      totalDuration,
+    });
     
     // Handle Anthropic API errors
     if (error.status === 529 || error.message?.includes('overloaded') || error.message?.includes('Overloaded')) {
