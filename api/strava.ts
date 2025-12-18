@@ -157,8 +157,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      // Filter for bike activities (type === 'Ride')
-      const bikeActivities = activities.filter(activity => activity.type === 'Ride');
+      // Filter for bike activities (type === 'Ride' or 'VirtualRide')
+      const bikeActivities = activities.filter(activity => activity.type === 'Ride' || activity.type === 'VirtualRide');
       
       if (bikeActivities.length === 0) {
         return res.status(404).json({
