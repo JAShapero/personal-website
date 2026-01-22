@@ -146,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let data;
 
-    if (type === 'latest') {
+    if (type === 'latest' || type === 'last') {
       // Fetch the latest activity
       const activities = await fetchActivities(accessToken, parseInt(per_page as string));
       
@@ -175,6 +175,108 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       data = {
         activity: {
+          id: detailedActivity.id,
+          name: detailedActivity.name,
+          distance: detailedActivity.distance,
+          elevation_gain: detailedActivity.total_elevation_gain,
+          moving_time: detailedActivity.moving_time,
+          elapsed_time: detailedActivity.elapsed_time,
+          start_date: detailedActivity.start_date,
+          start_date_local: detailedActivity.start_date_local,
+          location_city: detailedActivity.location_city,
+          location_state: detailedActivity.location_state,
+          location_country: detailedActivity.location_country,
+          route_polyline: detailedActivity.map?.summary_polyline || detailedActivity.map?.polyline || null,
+        },
+      };
+    } else if (type === 'longest') {
+      // Fetch 100 activities to find the longest
+      const activities = await fetchActivities(accessToken, 100);
+      
+      if (activities.length === 0) {
+        return res.status(404).json({
+          error: 'No activities found',
+          message: 'No bike activities found in your Strava account.',
+        });
+      }
+
+      // Filter for bike activities (type === 'Ride' or 'VirtualRide')
+      const bikeActivities = activities.filter(activity => activity.type === 'Ride' || activity.type === 'VirtualRide');
+      
+      if (bikeActivities.length === 0) {
+        return res.status(404).json({
+          error: 'No bike activities found',
+          message: 'No bike rides found in your recent Strava activities.',
+        });
+      }
+
+      // Find the activity with maximum distance
+      const longestActivity = bikeActivities.reduce((max, activity) => 
+        activity.distance > max.distance ? activity : max
+      );
+      
+      // Fetch detailed activity info including map polyline
+      const detailedActivity = await fetchActivity(accessToken, longestActivity.id);
+
+      data = {
+        activity: {
+          id: detailedActivity.id,
+          name: detailedActivity.name,
+          distance: detailedActivity.distance,
+          elevation_gain: detailedActivity.total_elevation_gain,
+          moving_time: detailedActivity.moving_time,
+          elapsed_time: detailedActivity.elapsed_time,
+          start_date: detailedActivity.start_date,
+          start_date_local: detailedActivity.start_date_local,
+          location_city: detailedActivity.location_city,
+          location_state: detailedActivity.location_state,
+          location_country: detailedActivity.location_country,
+          route_polyline: detailedActivity.map?.summary_polyline || detailedActivity.map?.polyline || null,
+        },
+      };
+    } else if (type === 'shuffle') {
+      // Fetch 100 activities for shuffle
+      const activities = await fetchActivities(accessToken, 100);
+      
+      if (activities.length === 0) {
+        return res.status(404).json({
+          error: 'No activities found',
+          message: 'No bike activities found in your Strava account.',
+        });
+      }
+
+      // Filter for bike activities (type === 'Ride' or 'VirtualRide')
+      let bikeActivities = activities.filter(activity => activity.type === 'Ride' || activity.type === 'VirtualRide');
+      
+      if (bikeActivities.length === 0) {
+        return res.status(404).json({
+          error: 'No bike activities found',
+          message: 'No bike rides found in your recent Strava activities.',
+        });
+      }
+
+      // Parse exclude_ids from query parameter
+      const excludeIdsParam = req.query.exclude_ids as string | undefined;
+      if (excludeIdsParam) {
+        const excludeIds = excludeIdsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        bikeActivities = bikeActivities.filter(activity => !excludeIds.includes(activity.id));
+      }
+
+      // If no activities remain after exclusion, fall back to all bike activities
+      if (bikeActivities.length === 0) {
+        bikeActivities = activities.filter(activity => activity.type === 'Ride' || activity.type === 'VirtualRide');
+      }
+
+      // Randomly select one activity
+      const randomIndex = Math.floor(Math.random() * bikeActivities.length);
+      const randomActivity = bikeActivities[randomIndex];
+      
+      // Fetch detailed activity info including map polyline
+      const detailedActivity = await fetchActivity(accessToken, randomActivity.id);
+
+      data = {
+        activity: {
+          id: detailedActivity.id,
           name: detailedActivity.name,
           distance: detailedActivity.distance,
           elevation_gain: detailedActivity.total_elevation_gain,
@@ -189,7 +291,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       };
     } else {
-      return res.status(400).json({ error: 'Invalid type. Use "latest"' });
+      return res.status(400).json({ error: 'Invalid type. Use "latest", "longest", or "shuffle"' });
     }
 
     return res.status(200).json(data);

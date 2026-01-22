@@ -19,6 +19,7 @@ interface BikeWidgetProps {
 }
 
 interface StravaActivity {
+  id?: number; // activity ID for tracking
   distance: number; // in meters
   elevation_gain: number; // in meters
   moving_time: number; // in seconds
@@ -247,16 +248,17 @@ function formatActivityDisplay(activity: StravaActivity): string {
   }
 }
 
+type ViewType = 'last' | 'longest' | 'shuffle';
+
 export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
   const [activity, setActivity] = useState<StravaActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-
-  useEffect(() => {
-    fetchStravaData();
-  }, []);
+  const [view, setView] = useState<ViewType>('last');
+  const [lastActivityId, setLastActivityId] = useState<number | null>(null);
+  const [longestActivityId, setLongestActivityId] = useState<number | null>(null);
 
   // Add/remove body class when modal is open and handle escape key
   useEffect(() => {
@@ -284,18 +286,47 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
     }
   }, [isMapModalOpen]);
 
-  const fetchStravaData = async () => {
+  // Fetch data when view changes
+  useEffect(() => {
+    if (view === 'last') {
+      fetchStravaData('last');
+    } else if (view === 'longest') {
+      fetchStravaData('longest');
+    } else if (view === 'shuffle') {
+      fetchStravaData('shuffle');
+    }
+  }, [view]);
+
+  const fetchStravaData = async (viewType: ViewType) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/strava?type=latest&per_page=10');
+      let url = '/api/strava?type=latest&per_page=1';
+      
+      if (viewType === 'longest') {
+        url = '/api/strava?type=longest&per_page=100';
+      } else if (viewType === 'shuffle') {
+        const excludeIds: number[] = [];
+        if (lastActivityId) excludeIds.push(lastActivityId);
+        if (longestActivityId) excludeIds.push(longestActivityId);
+        const excludeParam = excludeIds.length > 0 ? `&exclude_ids=${excludeIds.join(',')}` : '';
+        url = `/api/strava?type=shuffle&per_page=100${excludeParam}`;
+      } else if (viewType === 'last') {
+        url = '/api/strava?type=latest&per_page=1';
+      }
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         // If Strava is not configured, use mock data
         if (response.status === 401 || response.status === 500 || response.status === 404) {
-          setActivity(mockStravaData);
+          const mockActivity = { ...mockStravaData, id: 1 };
+          setActivity(mockActivity);
+          if (viewType === 'last') {
+            setLastActivityId(1);
+          }
           setIsUsingMockData(true);
           setLoading(false);
           return;
@@ -304,17 +335,35 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       }
 
       const data = await response.json();
-      setActivity(data.activity);
+      const fetchedActivity = { ...data.activity, id: data.activity.id || null };
+      setActivity(fetchedActivity);
+      
+      // Store activity IDs for shuffle exclusion
+      if (viewType === 'last' && fetchedActivity.id) {
+        setLastActivityId(fetchedActivity.id);
+      } else if (viewType === 'longest' && fetchedActivity.id) {
+        setLongestActivityId(fetchedActivity.id);
+      }
+      
       setIsUsingMockData(false);
       setLoading(false);
     } catch (err: any) {
       console.error('Error fetching Strava data:', err);
       setError('Failed to load ride data');
       // Fallback to mock data on error
-      setActivity(mockStravaData);
+      const mockActivity = { ...mockStravaData, id: 1 };
+      setActivity(mockActivity);
+      if (viewType === 'last') {
+        setLastActivityId(1);
+      }
       setIsUsingMockData(true);
       setLoading(false);
     }
+  };
+
+  const handleToggle = (e: React.MouseEvent, newView: ViewType) => {
+    e.stopPropagation();
+    setView(newView);
   };
 
   if (loading) {
@@ -333,7 +382,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
             <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <h3 className="text-gray-900 dark:text-gray-100">Last ride</h3>
+          <h3 className="text-gray-900 dark:text-gray-100">Biking</h3>
         </div>
         <div className="flex items-center justify-center h-[200px]">
           <Loader2 className="w-6 h-6 text-orange-600 dark:text-orange-400 animate-spin" />
@@ -358,7 +407,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
             <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <h3 className="text-gray-900 dark:text-gray-100">Last ride</h3>
+          <h3 className="text-gray-900 dark:text-gray-100">Biking</h3>
         </div>
         <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
           {error || 'No ride data available'}
@@ -383,9 +432,42 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-gray-900 dark:text-gray-100">Last ride</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{formatActivityDisplay(activity)}</p>
+          <h3 className="text-gray-900 dark:text-gray-100">Biking</h3>
         </div>
+      </div>
+
+      {/* Toggle */}
+      <div className="flex gap-1 mb-4 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
+        <button
+          onClick={(e) => handleToggle(e, 'last')}
+          className={`flex-1 px-3 py-1.5 rounded-md text-xs transition-all ${
+            view === 'last'
+              ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          Last
+        </button>
+        <button
+          onClick={(e) => handleToggle(e, 'longest')}
+          className={`flex-1 px-3 py-1.5 rounded-md text-xs transition-all ${
+            view === 'longest'
+              ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          Longest
+        </button>
+        <button
+          onClick={(e) => handleToggle(e, 'shuffle')}
+          className={`flex-1 px-3 py-1.5 rounded-md text-xs transition-all ${
+            view === 'shuffle'
+              ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          Shuffle
+        </button>
       </div>
 
       {/* Route Map */}
