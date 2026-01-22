@@ -245,8 +245,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      // Filter for bike activities (type === 'Ride' or 'VirtualRide')
-      let bikeActivities = activities.filter(activity => activity.type === 'Ride' || activity.type === 'VirtualRide');
+      // Filter for bike activities - only 'Ride' type (exclude 'VirtualRide')
+      let bikeActivities = activities.filter(activity => activity.type === 'Ride');
       
       if (bikeActivities.length === 0) {
         return res.status(404).json({
@@ -262,9 +262,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         bikeActivities = bikeActivities.filter(activity => !excludeIds.includes(activity.id));
       }
 
-      // If no activities remain after exclusion, fall back to all bike activities
+      // If no activities remain after exclusion, fall back to all Ride activities
       if (bikeActivities.length === 0) {
-        bikeActivities = activities.filter(activity => activity.type === 'Ride' || activity.type === 'VirtualRide');
+        bikeActivities = activities.filter(activity => activity.type === 'Ride');
       }
 
       // Randomly select one activity
