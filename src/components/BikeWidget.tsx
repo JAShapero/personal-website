@@ -256,7 +256,7 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [view, setView] = useState<ViewType>('last');
+  const [view, setView] = useState<ViewType>('shuffle');
   const [lastActivityId, setLastActivityId] = useState<number | null>(null);
   const [longestActivityId, setLongestActivityId] = useState<number | null>(null);
 
@@ -437,14 +437,14 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
       {/* Toggle */}
       <div className="flex gap-1 mb-4 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
         <button
-          onClick={(e) => handleToggle(e, 'last')}
+          onClick={(e) => handleToggle(e, 'shuffle')}
           className={`flex-1 px-3 py-1.5 rounded-md text-xs transition-all ${
-            view === 'last'
+            view === 'shuffle'
               ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          Last
+          Shuffle
         </button>
         <button
           onClick={(e) => handleToggle(e, 'longest')}
@@ -457,14 +457,14 @@ export function BikeWidget({ isActive, onClick }: BikeWidgetProps) {
           Longest
         </button>
         <button
-          onClick={(e) => handleToggle(e, 'shuffle')}
+          onClick={(e) => handleToggle(e, 'last')}
           className={`flex-1 px-3 py-1.5 rounded-md text-xs transition-all ${
-            view === 'shuffle'
+            view === 'last'
               ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          Shuffle
+          Last
         </button>
       </div>
 
